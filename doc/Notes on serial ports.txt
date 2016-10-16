@@ -1,0 +1,221 @@
+The network is primarily intended to run over serial ports
+connected to a shared bus. One key topology is the 
+RS485 setup commonly used in the industry. However, other
+setups can be used as long as basic requirements are met.
+
+For easy experiments involving modern day computers, the RS232 is 
+interesting to look deeper into.
+
+
+RS232 issues:
+-------------
+RS232 is an old standard. Good place to look for information:
+
+http://www.tldp.org/HOWTO/Serial-HOWTO-19.html
+
+In modern days when one refers to it, one usually
+mean one or several different things at the same time:
+
+- The actual bit protocol with start bits, stop bits, baudrates etc
+  that allow one to transmit one byte from one side to the other.
+  This operate on logical levels '0' and '1'.
+- The hardware part with connectors, the actual voltages used to 
+  represent logical 0 and 1.
+- Timing, baudrates, modem control lines.  etc
+
+Most software related talk nowday talk about the logical values 0
+and 1. In this world the start bit is a logical 0, databits
+follows, stop bit is 1. The idle state of the line is 1.
+
+The bit protocol is today used in many settings where the
+hardware part has changed. Common in embedded is having a wire
+where logical '0' is the voltage close to ground, and logical '1'
+is close to VDD. This is easy to work with. In this case most
+common setup is 8N1 with different  baudrates, 115200 or 9600
+being a common one.
+
+However, the 9 pin D-SUB connector found on older PC:s and in
+USB adapters follow the traditional RS232 hardware specification.   
+  
+The traditional RS232 have reversed polarity compared to 
+what is expected. A logical '0', often called 'SPACE' is
+represented by a positive voltage on line, while a logical '1',
+often called 'MARK', is represented by a negative voltage.
+
+Positive voltage is +3V - +15V and negative voltage is -3V - -15V.
+
+Control signals: (RTS, CTS, ...)
+In RS232  lingo, a signal is 'asserted' with a positive voltage
+and 'negated' with the negative voltage.
+
+According to internet (dubious source) modern equipment can
+interpret a value of 0V as a negative voltage. But no guarantees
+here.
+
+RTS/CTS control flow.
+---------------------
+From DTE perspective (your PC for instance). RTS is an output.
+When asserted the DTE is prepared to received data on its RX pin.
+When negated the DTE can not process more incoming data.
+CTS has the same role for your DCE (e.g. your modem). So when the
+modem can receive data, it asserts CTS. The DTE sees CTS as an
+input and starts sending.
+When the modem can not receive any more it negates CTS.
+This is the modern day use. There are arcaic uses where both
+RTS/CTS involve sending from DTE (PC) 
+
+
+Cheap test network.
+-------------------
+One can construct a cheap test network by doing a 'wired-and' of
+the tx lines and then connect the RX lines to this common bus.
+Here, the common bus has a resting level of a logical '1' and any
+node can drive the bus to logical '0'.
+
+Logic level systems:
+- Each TX line is connected to the bus via a small diode, with
+  the 'P' side (negative) toward the TX line. The 'N' side is
+  connected to the bus.
+- Each RX side is connected to the bus.
+- A pullup resistor of e.g. 10k is attached between VDD and the bus.
+- When a unit sends a logical 0, it will pull the voltage toward gnd.
+
+RS232 level systems:
+- Each TX line is connected to the bus via a small diode, with the
+  'N' side (positive) toward the TX line. The 'P' side is
+  connected to the bus.
+- Each RX side is connected to the bus.
+- A pulldown resistor of e.g. 10k is attached between a negative
+  source and the bus.
+- When a unit sends a logical 0, it will raise the voltage
+  toward +12V.
+
+- For a negative source for the pulldown, it might be possible to
+  use the RTS line and
+  making sure it outputs the correct logic level. I have tested
+  this and it works with my usb<->rs232 adapter. However,
+  no guarantees.
+
+- One issue: When initializing the port, the RTS signal is not
+  ready in time which will trigger at least one garbled byte in
+  the beginning. Remedy is to set up the driver,
+  wait a short while and then empty the RX buffer. After that
+  the port is ready to be used.
+  
+- Measured RTS on a USB to serial adapter. Showed -6V as expected.
+
+Pinout DTE (PC side) for 9 pin dsub:
+- 2 : RX data.
+- 3 : TX data.
+- 5 : GND.
+- 7 : RTS.
+
+
+Serial crossover cable investigation.
+-------------------------------------
+I cut one serial cross over cable (about 1.5m) in half.
+Got the following pinout to wire color mapping for both sides:
+
+  (Side one )  
+  5 : green.
+  4 : grey
+  3 : yellow
+  2 : blue
+  1 : brown.
+  6 + 8 : white
+  7 : red
+  9 : orange
+  - : violet unused. 
+  shield : naked chord.
+  
+Other side:
+  (Side two)
+  5 : green
+  4 : white.
+  6 + 8 : grey.
+  3 : blue
+  2 : yellow
+  1 : Red.
+  7 : brown.
+  9 : Orange.
+  - : Violet unused.
+  shield : naked chord.
+
+So:
+  green : s1:5:gnd s2:5:gnd
+  grey  : s1:4:DTR s2:6:DSR + 8:CTS.
+  yellow: s1:3:TX  s2:2:RX
+  blue  : s1:2:RX  s2:3:TX
+  brown : s1:1:DCD s2:7:RTS
+  white : s1:6:DSR+8:CTS   s2:4:DTR.
+  red   : s1:7:RTS s2:1:DCD
+  orange: s1:9:RI  s2:9:RI
+
+However I read this, it seems buggy. Seems DSR/DTR handshaking
+is implemented but with the twist of setting CTS input also.
+Normal RTS/CTS flow control will not work with this cable.
+
+Modifying it for serialnet use: 
+
+3 connectors, the 2 halfs of the crossover cable and one free
+female DB-9 connector, 
+(name free connector as s3) 
+
+Get 3 PN diodes (D1, D2, D3) + 1 resistor R. (suggest 1N4148 and 1k)
+
+connect: s1:5 gnd (green), s2:5 gnd (green), s3:5 ( gnd)
+Connect: s3:7 rts (-) to resistor.side 1
+Connect: s1:3 tx  (yellow) to D1 positive side.
+Connect: s2:3 tx  (blue) to D2 positive side.
+Connect: s3:3 tx  (-) to D3 positive side.
+
+Common bus: connect all:
+  s1:2 rx (blue), s2:2 (yellow), s3:2, D1 neg side, 
+  D2 neg side, D3 neg side,  res side 2.
+
+This is the common signaling on the bus.
+
+Using this setup and removing the bad start byte, allow me to run 
+at least 115200 baud without any significant packet loss.
+
+
+VMWare issue:
+-------------
+- Used a setup with a pl2303 usb<->serial adapter and did a 
+  port forward of 'removable device' to the virtual Linux instance.
+  It showed up as /dev/ttyUSB0 but got issues with delays, timeouts,
+  and error messages in the kernel log.
+  Reading up on VMWare doc, the recommended way is to set up a 
+  VMWare serial port and connect it to the windows 'COMx' device.
+  Did it. Worked much better. The unit showed up as '/dev/ttyS1'
+  (skipped ttyS0 for some reason.)
+- The test utility 'serialtest' will write a couple of bytes to
+  a serial port and check that it receives the same bytes. With
+  a hardware loopback the connection all the way to hardware can
+  be tested.
+- Later testing with usb removable device forwarding does indicate
+  that it works but you got the 1 second delay at startup and
+  dmesg errors.
+
+  
+RS485 issues:
+-------------
+- When using RS485 you usually need to supply a 'TX enable' signal.
+  normal converters connect this to the RTS line, so we need
+  software support for this.
+  Do observe that the timing of this is sensitive. The
+  unit sending a packet must turn off the transmitter just as
+  it finishes.
+  Usually another unit will start transmitting a response packet
+  and it will be scrambled if the driver do not turn of TX
+  enable in time. Linux has support for RS485 which will handle
+  the RTS signal. However, timing accuracy is unknown.
+- An option is to use external hardware. One can detect any
+  '0' bit and activate the TX enable for the time needed to
+  send one byte. This require the last byte sent being 0xff to
+  avoid triggering on data bits.
+
+- The protocol relies on seeing its own packets on the RX port.
+  It uses this to know when a packet is fully transmitted and
+  when it can expect that the receiver have gotten the packet.
+  Hence RX enable should always be active.

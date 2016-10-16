@@ -1,0 +1,22 @@
+To install and use the SerialNet utility build it using cmake.
+
+A number of prerequisites are needed. There is a tools/setup_dependencies.sh
+script that will install most of them on an .deb system. It is tested
+on an Ubuntu 16.04 system.
+
+Note: The script will download and build the react-cpp library
+(no .deb file is available for this). It will also request sudo priveliges to
+directly install the library and include files under /usr/lib and /usr/include.
+If you do not want this, don't run the script. Modify it to your liking.
+
+To build the utility. Unpack the source. Create a parallel
+folder 'serial_net-build' and build with cmake.
+
+mkdir serial_net-build
+cd serial_net-build
+cmake ../serial_net
+make -j 4
+
+to run the utility:
+src/mains/serialnet/serialnet --usage
+

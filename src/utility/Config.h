@@ -56,7 +56,7 @@ class Config
      */
     int masterHighAddress() const
     {
-        return 2;
+        return 16;
     }
 
     /**
@@ -83,21 +83,45 @@ class Config
      */
     double masterTokenClientTimeout() const
     {
-        return 0.2;
+        return 0.05;
     }
 
     /**
-     * Maximum time (sec) a client is allowed to wait before sending a
-     * packet or replying to the master. After this, the master assumes
-     * control over the bus again.
+     * How long delay until next token passing, for a single address
+     * after it has sent a packet
      */
-    // static constexpr double TOKEN_REPLY_TIMEOUT = 0.01;
+    double addrDelayTokenPacketSent() const
+    {
+        return 0.0001; // Really short. Might have more packets.
+    }
 
     /**
-     * Time between the round robin check of all the clients if they want to
-     * send.
+     * How long delay until next token passing, for a single address
+     * after it has missed to reply to a token.
      */
-    // static constexpr double PACKET_QUERY_INTERVAL = 0.1;
+    double addrDelayTokenTimeout() const
+    {
+        return 10.0; // Really long. This node is a nuisance to the network.
+    }
+
+    /**
+     * We have given up on this address. Check it occasionally in case a
+     * new unit is connected.
+     *
+     */
+    double addrDelayFreeAddress() const
+    {
+        return 30.0; // Really long. We do not expect any node here.
+    }
+
+    /**
+     * How long delay until next token passing, for a single address
+     * after it has returned the token.
+     */
+    double addrDelayTokenReturn() const
+    {
+        return 0.1; // A bit longer. Focus on the ones currently sending.
+    }
 
     static Config& instance();
 };

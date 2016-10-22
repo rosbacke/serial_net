@@ -224,6 +224,7 @@ PacketTypeCodec::sendClientPacket()
 {
     if (m_txMsg.empty())
     {
+        LOG_DEBUG << "Nothing to send from own client.";
         return false;
     }
     auto packet = m_txMsg.front();

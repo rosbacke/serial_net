@@ -6,7 +6,7 @@
 sudo killall serialnet
 sudo killall socat
 
-sudo socat system:"${HOME}/0_project/serial_net-build/src/mains/serialnet/serialnet --mode socat_tap -m -l 1 --address 1 --mtimeout 120 --wsdump /home/mikaelr/packet.txt --serial_device /dev/ttyUSB1" tun:192.168.128.1/24,iff-up,tun-name=tap0,tun-type=tap &
+sudo socat system:"${HOME}/0_project/serial_net-build/src/mains/serialnet/serialnet --mode socat_tap -m -l 1 --address 1 --mtimeout 120 --wsdump /home/mikaelr/packet.txt --serial_device /dev/ttyUSB0" tun:192.168.128.1/24,iff-up,tun-name=tap0,tun-type=tap &
 
 sudo ip link set dev tap0 mtu 500
 

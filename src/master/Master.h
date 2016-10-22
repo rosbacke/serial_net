@@ -25,6 +25,7 @@
 #ifndef SRC_CORE_MASTER_H_
 #define SRC_CORE_MASTER_H_
 
+#include "Addresses.h"
 #include "core/Core.h"
 #include "core/PacketTypeCodec.h"
 
@@ -78,6 +79,8 @@ class Master : MasterChannelIf::RxIf
     // callbacks after master destruction.
     void makeTimeout(double time);
 
+    void makeTimeoutAbs(double timeout);
+
     void cleanTimeout();
 
     struct State
@@ -111,8 +114,6 @@ class Master : MasterChannelIf::RxIf
         m_nextState = fkn;
     }
 
-    bool sendNextToken();
-
     void stateProcess(const EvId& ev);
     void tokenTimeout();
 
@@ -123,8 +124,6 @@ class Master : MasterChannelIf::RxIf
     // Send the token to the next client.
     void sendToken(int destAddr);
     void sendMasterStartStop(bool stop);
-
-    void finishedPrevToken();
 
     void postEvent(EvId event);
 
@@ -152,6 +151,7 @@ class Master : MasterChannelIf::RxIf
     Config* m_config;
 
     bool m_anyPacketSent = false;
+    Addresses m_addresses;
 };
 
 #endif /* SRC_CORE_MASTER_H_ */

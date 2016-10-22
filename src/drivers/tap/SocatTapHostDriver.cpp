@@ -125,6 +125,7 @@ SocatTapHostDriver::doRead(int fd)
     destAddr = m_cache->getLocalAddress(tapHeader->m_ether.m_destMAC);
     if (destAddr == -1)
     {
+        LOG_DEBUG << "Tap: no local address for mac. Skip tx.";
         return;
     }
 

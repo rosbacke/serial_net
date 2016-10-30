@@ -36,11 +36,11 @@ class AddressLine
         active,    // Have recently transmitted packets. Might have more.
         idle,      // Have recently declined the token. Well behaved.
         badClient, // Have failed to return token and let the timeout pass.
-        free       // This address is furrently unallocated.
+        free       // This address is currently unallocated.
     };
 
-    AddressLine();
-    ~AddressLine();
+    AddressLine(){};
+    ~AddressLine(){};
 
     void setInit(State state)
     {
@@ -68,7 +68,7 @@ class AddressLine
 
   private:
     State m_state = State::idle;
-    int m_badCount;
+    int m_badCount = 0;
 };
 
 #endif /* SRC_MASTER_ADDRESSLINE_H_ */

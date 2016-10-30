@@ -23,14 +23,13 @@ helpMessage()
     std::string help = R"(
 Serialnet is a small utility for setting up a network between nodes of a shared 
 bus. The intended use is to create an TCP/IP subnet between nodes connected via 
-e.g. an RS485 bus. Currently it only supports setting up channels from one host to 
-another over a shared network.
+e.g. an RS485 bus.
 
 Quick start guide:
 - Have 2 serial ports connected (e.g. /dev/ttyS0, /dev/ttyS1) via some
   shared medium (rs485 or a tweaked rs232 cable.)
-- terminal one: serialnet --mode stdin --master --address 1 --device /dev/ttyS0
-- terminal two: serialnet --mode opipe --address 2 --device /dev/ttyS1
+- terminal one: serialnet --mode stdin --master --address 1 -d /dev/ttyS0
+- terminal two: serialnet --mode opipe --address 2 -d /dev/ttyS1
 - In terminal window for process one, type a string and press enter. It should
   appear as standard output on terminal two.
 This example uses broadcast addresses. See 'usage' to add address filtering.
@@ -41,9 +40,7 @@ activate the master functionality feature.
 In its most simple form the tool provides framing of data into packets on the 
 shared medium and manage access control to avoid interference between nodes.
 There is no support for 'ports' as defined for e,g, tcp/ip. If several 
-channels are needed, use e.g. tun and the normal tco/ip stack.
-(Possible extension is to have a primary serialnet open a server socket
- which will offer access to the ether medium over it.)
+channels are needed, use e.g. tap and the normal tco/ip stack.
 
 The utility has 2 main interfaces where data is passed:
 - ether : Connect to the common medium where data is shared.
@@ -51,13 +48,17 @@ The utility has 2 main interfaces where data is passed:
 
 In addition the tool operate in one of several modes:
 - none : Disable client functionality. (Master might still work)
-- stdin : Standard input stream. User can write data that will sent to a 
-          remote address that is set up at program start.
-- stdout : Standard output stream. Wait for incoming data and write it to stdout.
-          an optional filter on sender address can be set up at program start.
-- stdio : Set up a bidirectional channel with another host.
-- network : For operations where serialnet act as a driver in some kind of
-            network stack.
+- std_in : Standard input stream. User can write data that will sent to a 
+           remote address that is set up at program start.
+- std_out : Standard output stream. Wait for incoming data and write it to stdout.
+            an optional filter on sender address can be set up at program start.
+- std_io : Set up a bidirectional channel with another host.
+- socat_tun : Connect host side to a TUN interface via the socat utility.
+- socat_tap : Connect host side to a TAP interface via the socat utility.
+- tap : Connect host side to a TAP interface.
+
+
+Future extension: The following are ideas about future work.
 
 Serialnet implement several drivers for the host and ether interfaces.
 The ether side drivers comes in 2 categories: byte based streams and message 
@@ -89,7 +90,7 @@ send/receive user data over the common medium. It follow the token passing
 protocol in doing so. The master owns the bus and passes tokens to clients to 
 allow them to send data. The master is also the main repository for the local 
 address table. There must be exactly one master on the bus. The node 
-implementing the master need not to be a client.
+implementing the master need not to be a client but can be.
 )";
     return help;
 }

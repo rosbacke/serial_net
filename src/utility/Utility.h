@@ -36,6 +36,11 @@ inline constexpr std::size_t operator"" _sz(unsigned long long int x)
     return x;
 }
 
+inline constexpr std::ptrdiff_t operator"" _ssz(unsigned long long int x)
+{
+    return x;
+}
+
 namespace gsl
 {
 using namespace gsl;

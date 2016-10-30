@@ -33,6 +33,7 @@
 #include <string>
 #include <vector>
 
+#include "interfaces/MsgEtherIf.h"
 #include <utility/Utility.h>
 
 /**
@@ -44,7 +45,7 @@ class WSDump
   public:
     WSDump(std::string file);
 
-    void rxPacket(const std::vector<gsl::byte>& data);
+    void rxPacket(const MsgEtherIf::EtherPkt& packet);
     ~WSDump();
 
   private:

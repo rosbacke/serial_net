@@ -36,11 +36,11 @@ class Config;
 /**
  * Implement the master part of the serial shared protocol.
  */
-class Master : MasterChannelIf::RxIf
+class Master : MasterRxIf::RxIf
 {
   public:
-    Master(React::Loop& loop, MasterChannelIf* ps, int ownClientAddress,
-           Config* cfg);
+    Master(React::Loop& loop, MasterRxIf* mr, MasterTxIf* mt,
+           int ownClientAddress, Config* cfg);
 
     virtual ~Master();
 
@@ -118,8 +118,9 @@ class Master : MasterChannelIf::RxIf
     void tokenTimeout();
 
     // Implement reception of packets.
-    virtual void masterPacketReceived(MessageType type,
-                                      const ByteVec& packet) override;
+    virtual void
+    masterPacketReceived(MessageType type,
+                         const MsgEtherIf::EtherPkt& packet) override;
 
     // Send the token to the next client.
     void sendToken(int destAddr);
@@ -131,7 +132,8 @@ class Master : MasterChannelIf::RxIf
 
     React::Loop& m_loop;
 
-    MasterChannelIf* m_masterChannel;
+    MasterRxIf* m_masterRx;
+    MasterTxIf* m_masterTx;
 
     std::shared_ptr<React::TimeoutWatcher> m_tokenTimeout;
 

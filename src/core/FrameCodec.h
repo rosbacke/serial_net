@@ -25,6 +25,7 @@
 #ifndef SRC_CORE_FRAMECODEC_H_
 #define SRC_CORE_FRAMECODEC_H_
 
+#include "gsl/gsl"
 #include "interfaces/MsgEtherIf.h"
 #include "utility/Utility.h"
 

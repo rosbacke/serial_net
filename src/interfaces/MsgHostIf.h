@@ -37,12 +37,22 @@
 class MsgHostIf
 {
   public:
+    // Represent the raw bytes to be passed on the host side.
+    class HostPkt : public gsl::span<const gsl::byte>
+    {
+      public:
+        HostPkt(const gsl::byte* start, std::size_t length)
+            : gsl::span<const gsl::byte>(start, length)
+        {
+        }
+    };
+
     // Interface for sending packets over the network.
     class TxIf
     {
       public:
         // The core implements this function.
-        virtual void msgHostTx_sendPacket(const ByteVec& data, int srcAddr,
+        virtual void msgHostTx_sendPacket(const HostPkt& data, int srcAddr,
                                           int destAddr) = 0;
 
         virtual void msgHostTx_sendAddressUpdate(int address,

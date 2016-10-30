@@ -31,6 +31,8 @@
 #include <array>
 #include <core/AddressCache.h>
 
+#include "TapProtocol.h"
+
 /**
  * Simple host side driver using stdin/stdout. It is intended to be connected
  * as a TUN device via the socat utility.
@@ -47,15 +49,8 @@
  */
 class SocatTapHostDriver : public MsgHostIf
 {
-    using MACAddr = AddressCache::MacAddr;
-    struct TapHeader;
-    struct EtherHeader;
-    struct Ipv4Header;
-    struct EtherFooter;
-    struct ArpIpv4Header;
-
   public:
-    SocatTapHostDriver(int myAddr);
+    SocatTapHostDriver(int myAddr, AddressCache* ac);
     virtual ~SocatTapHostDriver();
 
     void startTransfer(MsgHostIf::TxIf* txIf, React::Loop& loop);
@@ -64,32 +59,22 @@ class SocatTapHostDriver : public MsgHostIf
      * Called when a packet was received from the serial net.
      */
     virtual void packetReceived(const ByteVec& data, int srcAddr,
-                                int destAddr) override;
+                                int destAddr) override
+    {
+        m_tap.packetReceived(STDOUT_FILENO, data, srcAddr, destAddr);
+    }
 
     /**
      * Inform the driver where it is supposed to send its packets.
      */
     virtual void setTxHandler(TxIf* txIf) override
     {
-        m_txIf = txIf;
-    }
-
-    void setAddressCache(AddressCache* ac)
-    {
-        m_cache = ac;
+        m_tap.setTx(txIf);
     }
 
   private:
     void setupCallback(React::Loop& mainLoop);
-    void doRead(int fileDescriptor);
-    void checkArp(const TapHeader* tap);
-
-    int m_myAddr = -1;
-    MsgHostIf::TxIf* m_txIf = nullptr;
-
-    MACAddr m_myMAC;
-    bool m_myMacIsSet = false;
-    AddressCache* m_cache = nullptr;
+    TapProtocol m_tap;
 };
 
 #endif /* SRC_DRIVERS_TUN_SOCATTUNHOSTDRIVER_H_ */

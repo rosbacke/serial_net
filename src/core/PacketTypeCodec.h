@@ -25,13 +25,12 @@
 #ifndef SRC_CORE_PACKETTYPECODEC_H_
 #define SRC_CORE_PACKETTYPECODEC_H_
 
-#include "ByteBuf.h"
-
-#include "SerialProtocol.h"
 #include "interfaces/MsgEtherIf.h"
 #include "interfaces/MsgHostIf.h"
-
 #include "utility/Utility.h"
+
+#include "interfaces/MasterTxIf.h"
+#include "interfaces/SerialProtocol.h"
 
 #include <array>
 #include <cstdint>
@@ -42,41 +41,9 @@
 class MsgHostIf;
 class WSDump;
 class AddressCache;
+class TxQueue;
 
-/**
- * Interface class implemented by the class supplying packets to
- * the master.
- */
-class MasterChannelIf
-{
-  public:
-    class RxIf
-    {
-      public:
-        virtual void masterPacketReceived(MessageType type,
-                                          const ByteVec& packet) = 0;
-    };
-
-    // Called by the master to send a packet. Contain everything except the
-    // frame layer.
-    virtual void sendMasterPacket(const ByteVec& packet) = 0;
-
-    // When the own client can send a packet. return true if packet was sent.
-    virtual bool sendClientPacket() = 0;
-
-    // Return true if the client can deduce that a packet is currently
-    // being received.
-    virtual bool packetRxInProgress() = 0;
-
-    // Called by the master to set up reception of packets.
-    virtual void regMasterRx(RxIf* rxIf) = 0;
-
-    virtual ~MasterChannelIf(){};
-};
-
-class PacketTypeCodec : public MsgEtherIf::RxIf,
-                        public MsgHostIf::TxIf,
-                        public MasterChannelIf
+class PacketTypeCodec : public MsgEtherIf::RxIf, public MasterRxIf
 {
   public:
     struct RxPacket
@@ -96,13 +63,11 @@ class PacketTypeCodec : public MsgEtherIf::RxIf,
         m_masterEndedCB = fkn;
     }
 
-    PacketTypeCodec(MsgEtherIf* msgEtherIf, int ownAddress);
+    PacketTypeCodec(MsgEtherIf* msgEtherIf, TxQueue* tx, int ownAddress);
 
     virtual ~PacketTypeCodec();
 
-    void rxRawPacket(const ByteBuf& bb);
-
-    void sendPacket(const ByteVec& data, int address);
+    void sendPacket(const MsgHostIf::HostPkt& data, int address);
 
     bool empty() const
     {
@@ -116,54 +81,40 @@ class PacketTypeCodec : public MsgEtherIf::RxIf,
         m_wsDump = wsDump;
     }
 
-    virtual bool packetRxInProgress() override
-    {
-        return m_msgEtherIf->packetRxInProgress();
-    }
-
     void setAddressCache(AddressCache* ac)
     {
         m_cache = ac;
     }
 
   private:
-    void sendReturnToken();
+    void rxRawPacket(const MsgEtherIf::EtherPkt& packet);
 
     void handleToken(const ByteVec& packet);
 
     // Implement MsgEtherIf::RxIf interface.
-    virtual void msgEtherRx_newMsg(const ByteVec& msg) override;
-
-    // Implement MsgHostIf::TxIf interface.
-    virtual void msgHostTx_sendPacket(const ByteVec& data, int srcAddr,
-                                      int destAddr) override;
-
-    virtual void
-    msgHostTx_sendAddressUpdate(int address,
-                                std::array<gsl::byte, 6> mac) override;
-
-    // Called by the master to send a packet. Contain everything except the
-    // frame layer.
-    virtual void sendMasterPacket(const ByteVec& packet) override;
-
-    // Own client can send a packet.
-    virtual bool sendClientPacket() override;
+    virtual void msgEtherRx_newMsg(const MsgEtherIf::EtherPkt& packet) override;
 
     // Called by the master to set up reception of packets.
-    virtual void regMasterRx(MasterChannelIf::RxIf* rxIf) override
+    virtual void regMasterRx(MasterRxIf::RxIf* rxIf) override
     {
         m_master = rxIf;
     }
 
+    // Query low level sending software to know if a packet is being received.
+    virtual bool packetRxInProgress() override
+    {
+        return m_msgEtherIf->packetRxInProgress();
+    }
+
     MsgEtherIf* m_msgEtherIf;
     MsgHostIf* m_msgHostIf;
+    TxQueue* m_txQueue;
 
-    MasterChannelIf::RxIf* m_master;
+    MasterRxIf::RxIf* m_master;
     WSDump* m_wsDump;
 
     int m_ownAddress;
-    std::deque<ByteBuf> m_rxMsg;
-    std::deque<ByteBuf> m_txMsg;
+    std::deque<ByteVec> m_rxMsg;
 
     std::function<void()> m_masterEndedCB;
     AddressCache* m_cache = nullptr;

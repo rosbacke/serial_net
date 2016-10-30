@@ -29,16 +29,31 @@
 #include "interfaces/RuntimeIf.h"
 #include "reactcpp.h"
 
+#include "../../hal/PosixIf.h"
 #include <string>
+
+class PosixFileIf;
 
 /**
  * Implement the driver for a standard Linux serial port for the byte
  * layer.
  */
-class SerialByteEther : public ByteEtherIf, public RuntimeIf
+class SerialByteEther : public ByteEtherIf
 {
   public:
-    SerialByteEther(const std::string& device);
+    class SerialHal
+    {
+      public:
+        SerialHal(PosixFileIf* file, PosixSleepIf* sleep, PosixSerialIf* serial)
+            : m_file(file), m_sleep(sleep), m_serial(serial)
+        {
+        }
+        PosixFileIf* m_file;
+        PosixSleepIf* m_sleep;
+        PosixSerialIf* m_serial;
+    };
+
+    SerialByteEther(const std::string& device, SerialHal hal);
     virtual ~SerialByteEther();
 
     // Set up callback based reading when data is available.
@@ -49,9 +64,6 @@ class SerialByteEther : public ByteEtherIf, public RuntimeIf
 
     // Register a receiver.
     virtual void addClient(ByteEtherIf::RxIf* cb) override;
-
-    // Perform polling of the rx side.
-    virtual bool execute() override;
 
     int getFd() const
     {
@@ -67,6 +79,7 @@ class SerialByteEther : public ByteEtherIf, public RuntimeIf
 
     int m_fd;
     ByteEtherIf::RxIf* m_rxCB;
+    SerialHal m_hal;
 };
 
 #endif /* SRC_DRIVERS_SERIAL_SERIALBYTEETHER_H_ */

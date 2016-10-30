@@ -8,4 +8,4 @@ add_subdirectory(drivers)
 add_subdirectory(mains)
 add_subdirectory(utility)
 add_subdirectory(interfaces)
-
+add_subdirectory(hal)

@@ -122,7 +122,9 @@ SocatTunHostDriver::doRead(int fd)
 
         if (m_txIf)
         {
-            m_txIf->msgHostTx_sendPacket(m_rxTunPacket, srcAddr, destAddr);
+            MsgHostIf::HostPkt hostPkt(m_rxTunPacket.data(),
+                                       m_rxTunPacket.size());
+            m_txIf->msgHostTx_sendPacket(hostPkt, srcAddr, destAddr);
         }
         break;
     }

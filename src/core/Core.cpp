@@ -23,9 +23,11 @@
  */
 
 #include "Core.h"
-#include "SerialProtocol.h"
+
+#include "../interfaces/SerialProtocol.h"
 #include "utility/Utility.h"
 
+#if 0
 namespace
 {
 template <class T, class U>
@@ -55,7 +57,7 @@ Core::Core(ByteStreamIf* bsif, DecodeCB clientCB, void* cbData)
  * Receive a decoded packet from the serial net.
  */
 void
-Core::receiveSerialPacket(const ByteVec& packet)
+Core::receiveSerialPacket(const MsgEtherIf::EtherPkt& packet)
 {
     if (m_clientCB)
     {
@@ -89,3 +91,4 @@ Core::sendPacketToSerial(int destAddr, int tokenHint, const ByteVec& data)
     m_frameCodec.encodePacket(packet, packetOut);
     m_bsif->write(data);
 }
+#endif

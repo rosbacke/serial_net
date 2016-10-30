@@ -54,7 +54,7 @@ WSDump::~WSDump()
 
 // Write out text readable by text2pcap : text2pcap -t '%s.' -l 147 - -
 void
-WSDump::rxPacket(const std::vector<gsl::byte>& data)
+WSDump::rxPacket(const MsgEtherIf::EtherPkt& packet)
 {
     const bool doZeroBasedTimes = true;
 
@@ -63,8 +63,8 @@ WSDump::rxPacket(const std::vector<gsl::byte>& data)
     {
         return;
     }
-    auto size = data.size();
-    auto index = 0_sz;
+    auto size = packet.size();
+    auto index = 0_ssz;
     while (index < size)
     {
         auto now = Utility::now();
@@ -77,7 +77,7 @@ WSDump::rxPacket(const std::vector<gsl::byte>& data)
         *m_os << boost::format(" %06x") % index;
         for (auto col = 0_sz; col < cols && index < size; ++col, ++index)
         {
-            *m_os << boost::format(" %02x") % int(data[index]);
+            *m_os << boost::format(" %02x") % int(packet[index]);
         }
         *m_os << '\n';
     }

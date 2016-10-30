@@ -47,6 +47,7 @@ SNConfig::toString(Mode mode)
         CASE(std_io)
         CASE(socat_tun)
         CASE(socat_tap)
+        CASE(tap)
 
         CASE(mode_max_num)
     }
@@ -70,6 +71,7 @@ SNConfig::toMode(std::string mode)
     IF_MODE(std_io)
     IF_MODE(socat_tun) //
     IF_MODE(socat_tap) //
+    IF_MODE(tap)       //
     {
         return Mode::unknown;
     }

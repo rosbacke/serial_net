@@ -92,6 +92,7 @@ FrameCodec::decodeByte(byte curByte)
     switch (m_state)
     {
     case DecodeState::getKW:
+    {
         if (curByte == keyword)
         {
             m_checksum = keyword;
@@ -99,7 +100,7 @@ FrameCodec::decodeByte(byte curByte)
             m_length = 0;
         }
         break;
-
+    }
     case DecodeState::getLen:
     {
         m_checksum ^= curByte;
@@ -117,8 +118,8 @@ FrameCodec::decodeByte(byte curByte)
         }
         break;
     }
-
     case DecodeState::getData:
+    {
         m_checksum ^= curByte;
         m_decodePacket[m_index++] = curByte;
         if (m_index == m_length)
@@ -126,15 +127,19 @@ FrameCodec::decodeByte(byte curByte)
             m_state = DecodeState::getChecksum;
         }
         break;
+    }
     case DecodeState::getChecksum:
+    {
         m_checksum ^= curByte;
         m_state = DecodeState::getFiller;
         break;
-
+    }
     case DecodeState::getFiller:
+    {
         if (m_checksum == to_byte<0>() && m_decodeCB)
         {
-            m_decodeCB->msgEtherRx_newMsg(m_decodePacket);
+            MsgEtherIf::EtherPkt pt(m_decodePacket.data(), m_length);
+            m_decodeCB->msgEtherRx_newMsg(pt);
         }
         else
         {
@@ -142,5 +147,6 @@ FrameCodec::decodeByte(byte curByte)
         }
         m_state = DecodeState::getKW;
         break;
+    }
     }
 }

@@ -63,7 +63,7 @@ class Core : public MsgEtherIf::RxIf
     void requestEtherAddr(const ByteVec& packet);
 
   private:
-    void msgEtherRx_newMsg(const ByteVec& msg) override
+    void msgEtherRx_newMsg(const MsgEtherIf::EtherPkt& msg) override
     {
         receiveSerialPacket(msg);
     }
@@ -71,7 +71,7 @@ class Core : public MsgEtherIf::RxIf
     /**
      * Receive a decoded packet from the serial net.
      */
-    void receiveSerialPacket(const ByteVec& packet);
+    void receiveSerialPacket(const MsgEtherIf::EtherPkt& packet);
 
     ByteStreamIf* m_bsif;
     FrameCodec m_frameCodec;

@@ -29,18 +29,23 @@
 #include "interfaces/MsgHostIf.h"
 #include "utility/Log.h"
 
+#include "core/PacketTypeCodec.h"
+#include "core/TxQueue.h"
+
 #include "core/MsgToByteAdapter.h"
 #include "core/WSDump.h"
 #include "drivers/serial/SerialByteEther.h"
+#include "hal/SerialHalReal.h"
 #include "master/Master.h"
 
 #include <boost/program_options.hpp>
 #include <boost/program_options/option.hpp>
 #include <boost/program_options/options_description.hpp>
-#include <drivers/tap/SocatTapHostDriver.h>
 
 #include "drivers/stdstream/StdstreamPipeHostDriver.h"
+#include "drivers/tap/TapHostDriver.h"
 #include "drivers/tun/SocatTunHostDriver.h"
+#include <drivers/tap/SocatTapHostDriver.h>
 
 SerialNet::SerialNet()
     : m_mode(SNConfig::Mode::unknown), m_msgEther(nullptr), m_msgHost(nullptr)
@@ -55,7 +60,7 @@ void
 SerialNet::start(boost::program_options::variables_map& vm)
 {
     int destAddr = 255;
-    std::string device = vm["serial_device"].as<std::string>();
+    std::string device = vm["serial-device"].as<std::string>();
     std::string mode = vm["mode"].as<std::string>();
 
     if (vm.count("wsdump") > 0)
@@ -86,7 +91,9 @@ SerialNet::start(boost::program_options::variables_map& vm)
     LOG_INFO << "Got dest addr: " << destAddr;
 
     // Hard code serial interface initially.
-    m_serialByteEther = std::make_unique<SerialByteEther>(device);
+    m_serialHalReal = std::make_unique<SerialHalReal>();
+    m_serialByteEther =
+        std::make_unique<SerialByteEther>(device, m_serialHalReal->get());
     m_serialByteEther->registerReadCB(m_loop);
 
     m_msgToByteAdapter = std::make_unique<MsgToByteAdapter>();
@@ -95,7 +102,9 @@ SerialNet::start(boost::program_options::variables_map& vm)
 
     m_msgEther = static_cast<MsgEtherIf*>(m_msgToByteAdapter.get());
 
-    m_packetTypeCodec = std::make_unique<PacketTypeCodec>(m_msgEther, myAddr);
+    m_txQueue = std::make_unique<TxQueue>(m_msgEther, myAddr);
+    m_packetTypeCodec =
+        std::make_unique<PacketTypeCodec>(m_msgEther, m_txQueue.get(), myAddr);
 
     m_msgEther->addClient(m_packetTypeCodec.get());
 
@@ -115,14 +124,14 @@ SerialNet::start(boost::program_options::variables_map& vm)
             break;
 
         case SNConfig::Mode::std_in:
-            m_stdHostStdstreamDriver->startStdin(
-                destAddr, m_packetTypeCodec.get(), m_loop);
+            m_stdHostStdstreamDriver->startStdin(destAddr, m_txQueue.get(),
+                                                 m_loop);
             break;
 
         case SNConfig::Mode::std_io:
             m_stdHostStdstreamDriver->startStdout(255);
-            m_stdHostStdstreamDriver->startStdin(
-                destAddr, m_packetTypeCodec.get(), m_loop);
+            m_stdHostStdstreamDriver->startStdin(destAddr, m_txQueue.get(),
+                                                 m_loop);
             break;
 
         default:
@@ -133,18 +142,28 @@ SerialNet::start(boost::program_options::variables_map& vm)
     else if (m_mode == SNConfig::Mode::socat_tun)
     {
         m_socatTunHostDriver = std::make_unique<SocatTunHostDriver>(myAddr);
-        m_socatTunHostDriver->startTransfer(m_packetTypeCodec.get(), m_loop);
+        m_socatTunHostDriver->startTransfer(m_txQueue.get(), m_loop);
         m_msgHost = m_socatTunHostDriver.get();
     }
     else if (m_mode == SNConfig::Mode::socat_tap)
     {
         m_addressCache = std::make_unique<AddressCache>();
-        m_socatTapHostDriver = std::make_unique<SocatTapHostDriver>(myAddr);
-        m_socatTapHostDriver->setAddressCache(m_addressCache.get());
+        m_socatTapHostDriver =
+            std::make_unique<SocatTapHostDriver>(myAddr, m_addressCache.get());
         m_packetTypeCodec->setAddressCache(m_addressCache.get());
-        m_socatTapHostDriver->startTransfer(m_packetTypeCodec.get(), m_loop);
+        m_socatTapHostDriver->startTransfer(m_txQueue.get(), m_loop);
 
         m_msgHost = m_socatTapHostDriver.get();
+    }
+    else if (m_mode == SNConfig::Mode::tap)
+    {
+        m_addressCache = std::make_unique<AddressCache>();
+        m_tapHostDriver =
+            std::make_unique<TapHostDriver>(myAddr, m_addressCache.get());
+        m_packetTypeCodec->setAddressCache(m_addressCache.get());
+        m_tapHostDriver->startTransfer(m_txQueue.get(), m_loop);
+
+        m_msgHost = m_tapHostDriver.get();
     }
     m_packetTypeCodec->setHostIf(m_msgHost);
     m_packetTypeCodec->setWsDump(m_wsDump.get());
@@ -154,7 +173,7 @@ SerialNet::start(boost::program_options::variables_map& vm)
     {
         LOG_INFO << "Starting master.";
         m_master = std::make_unique<Master>(m_loop, m_packetTypeCodec.get(),
-                                            myAddr, &m_config);
+                                            m_txQueue.get(), myAddr, &m_config);
 
         const int masterTimeout = vm["mtimeout"].as<int>();
         if (masterTimeout > -1)
@@ -171,7 +190,7 @@ SerialNet::start(boost::program_options::variables_map& vm)
         }
     }
     m_packetTypeCodec->setMasterEndedCB([&]() {
-        LOG_INFO << "Received master_stop. Quict client.";
+        LOG_INFO << "Received master_stop. Quit client.";
         m_loop.stop();
     });
 }

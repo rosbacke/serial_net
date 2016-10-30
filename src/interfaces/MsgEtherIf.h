@@ -29,6 +29,8 @@
 #include <cstdint>
 #include <vector>
 
+#include "gsl/gsl"
+
 /**
  * Interface for sending and receiving packets from the low level byte
  * interface.
@@ -37,13 +39,22 @@
 class MsgEtherIf
 {
   public:
+    class EtherPkt : public gsl::span<const gsl::byte>
+    {
+      public:
+        EtherPkt(const gsl::byte* start, std::size_t length)
+            : gsl::span<const gsl::byte>(start, length)
+        {
+        }
+    };
+
     /**
      * Interface for receiving a new packet from the medium.
      */
     class RxIf
     {
       public:
-        virtual void msgEtherRx_newMsg(const ByteVec& msg) = 0;
+        virtual void msgEtherRx_newMsg(const EtherPkt& msg) = 0;
     };
 
     MsgEtherIf();

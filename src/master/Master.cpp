@@ -44,16 +44,16 @@ std::vector<Master::State> Master::m_states = {
     EL(sentState)          //
 };
 
-Master::Master(React::Loop& loop, MasterChannelIf* ps, int ownClientAddress,
-               Config* cfg)
-    : m_loop(loop), m_masterChannel(ps), m_state(initState),
+Master::Master(React::Loop& loop, MasterRxIf* mr, MasterTxIf* mt,
+               int ownClientAddress, Config* cfg)
+    : m_loop(loop), m_masterRx(mr), m_masterTx(mt), m_state(initState),
       m_nextState(initState), m_ownClientAddress(ownClientAddress),
       m_addresses(cfg->masterLowAddress(), cfg->masterHighAddress(), loop, cfg)
 {
     m_timeoutHelper = std::make_shared<void*>(nullptr);
-    if (ps)
+    if (mr)
     {
-        ps->regMasterRx(this);
+        mr->regMasterRx(this);
     }
     emitEvent(EvId::entry);
     postEvent(Event::Id::init);
@@ -61,9 +61,9 @@ Master::Master(React::Loop& loop, MasterChannelIf* ps, int ownClientAddress,
 
 Master::~Master()
 {
-    if (m_masterChannel)
+    if (m_masterRx)
     {
-        m_masterChannel->regMasterRx(0);
+        m_masterRx->regMasterRx(0);
     }
 }
 
@@ -165,7 +165,8 @@ Master::emitEvent(const EvId& ev)
 }
 
 void
-Master::masterPacketReceived(MessageType type, const ByteVec& packet)
+Master::masterPacketReceived(MessageType type,
+                             const MsgEtherIf::EtherPkt& packet)
 {
     switch (type)
     {
@@ -199,7 +200,6 @@ Master::tokenTimeout()
     LOG_TRACE << "Timeout expired, post event.";
     m_tokenTimeout.reset();
     postEvent(EvId::token_timeout);
-    // finishedPrevToken();
 }
 
 void
@@ -210,7 +210,7 @@ Master::sendToken(int destAddr)
     packet.resize(2);
     packet[0] = to_byte(static_cast<uint8_t>(MessageType::grant_token));
     packet[1] = to_byte(static_cast<uint8_t>(destAddr));
-    m_masterChannel->sendMasterPacket(packet);
+    m_masterTx->sendMasterPacket(packet);
 }
 
 void
@@ -222,7 +222,7 @@ Master::sendMasterStartStop(bool stop)
 
     packet[0] = to_byte(static_cast<uint8_t>(
         stop ? MessageType::master_ended : MessageType::master_started));
-    m_masterChannel->sendMasterPacket(packet);
+    m_masterTx->sendMasterPacket(packet);
 }
 
 bool
@@ -298,7 +298,7 @@ Master::sendNextTokenState(Master& me, const EvId& ev)
             if (addr == me.m_ownClientAddress)
             {
                 LOG_TRACE << "Give token to own client.";
-                if (me.m_masterChannel->sendClientPacket())
+                if (me.m_masterTx->sendClientPacket(false))
                 {
                     // Client is sending.
                     me.transition(sentState);
@@ -382,7 +382,7 @@ Master::sentState(Master& me, const EvId& ev)
         return true;
 
     case EvId::token_timeout:
-        if (me.m_masterChannel->packetRxInProgress())
+        if (me.m_masterRx->packetRxInProgress())
         {
             me.makeTimeout(me.m_config->masterTokenClientTimeout());
         }

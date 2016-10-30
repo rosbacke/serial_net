@@ -23,11 +23,3 @@
  */
 
 #include "AddressLine.h"
-
-AddressLine::AddressLine()
-{
-}
-
-AddressLine::~AddressLine()
-{
-}

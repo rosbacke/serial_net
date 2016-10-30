@@ -55,10 +55,12 @@ StdstreamPipeHostDriver::setupCallback(React::MainLoop& mainLoop)
 {
     // we'd like to be notified when input is available on stdin
     mainLoop.onReadable(STDIN_FILENO, [this]() -> bool {
-        char buffer[256];
+        // Enough to keep an ethernet frame.
+        const constexpr int maxRead = 2000;
+        gsl::byte buffer[maxRead];
         ByteVec buf;
         ssize_t dataRead;
-        dataRead = ::read(STDIN_FILENO, buffer, 256);
+        dataRead = ::read(STDIN_FILENO, buffer, maxRead);
         if (dataRead > 0)
         {
             buf.resize(dataRead);
@@ -67,9 +69,12 @@ StdstreamPipeHostDriver::setupCallback(React::MainLoop& mainLoop)
                                return gsl::to_byte(
                                    static_cast<unsigned char>(el));
                            });
+            MsgHostIf::HostPkt hostPkt(static_cast<const gsl::byte*>(buffer),
+                                       dataRead);
             if (m_txHandler && m_destAddr > 0)
             {
-                m_txHandler->msgHostTx_sendPacket(buf, m_myAddr, m_destAddr);
+                m_txHandler->msgHostTx_sendPacket(hostPkt, m_myAddr,
+                                                  m_destAddr);
             }
         }
         // return true, so that we also return future read events

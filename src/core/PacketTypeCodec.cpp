@@ -25,6 +25,7 @@
 #include "PacketTypeCodec.h"
 
 #include "AddressCache.h"
+#include "TxQueue.h"
 #include "WSDump.h"
 #include "utility/Log.h"
 
@@ -35,9 +36,9 @@ using namespace gsl;
 class SerialNet;
 
 static bool
-longEnough(const std::vector<gsl::byte>& packet)
+longEnough(const MsgEtherIf::EtherPkt& packet)
 {
-    const auto size = packet.size();
+    const auto size = std::size_t(packet.size());
     if (size < 1)
     {
         LOG_WARN << "Packet less than 1 byte.";
@@ -69,9 +70,10 @@ longEnough(const std::vector<gsl::byte>& packet)
     return ret;
 }
 
-PacketTypeCodec::PacketTypeCodec(MsgEtherIf* msgEtherIf, int ownAddress)
-    : m_msgEtherIf(msgEtherIf), m_msgHostIf(nullptr), m_master(nullptr),
-      m_wsDump(nullptr), m_ownAddress(ownAddress)
+PacketTypeCodec::PacketTypeCodec(MsgEtherIf* msgEtherIf, TxQueue* tx,
+                                 int ownAddress)
+    : m_msgEtherIf(msgEtherIf), m_msgHostIf(nullptr), m_txQueue(tx),
+      m_master(nullptr), m_wsDump(nullptr), m_ownAddress(ownAddress)
 {
 }
 
@@ -80,15 +82,15 @@ PacketTypeCodec::~PacketTypeCodec()
 }
 
 void
-PacketTypeCodec::rxRawPacket(const ByteBuf& bb)
+PacketTypeCodec::rxRawPacket(const MsgEtherIf::EtherPkt& bb)
 {
-    if (!longEnough(bb.get()))
+    if (!longEnough(bb))
     {
         return;
     }
     if (m_wsDump)
     {
-        m_wsDump->rxPacket(bb.get());
+        m_wsDump->rxPacket(bb);
     }
     auto cmd = static_cast<MessageType>(bb[0]);
     LOG_TRACE << "Command: " << int(cmd) << " raw len: " << bb.size();
@@ -98,24 +100,21 @@ PacketTypeCodec::rxRawPacket(const ByteBuf& bb)
     case MessageType::grant_token:
     {
         const int msgOwnAddr = gsl::to_integer<int>(bb[1]);
-        if (msgOwnAddr == m_ownAddress)
+        if (msgOwnAddr == m_ownAddress && m_txQueue)
         {
-            if (!sendClientPacket())
-            {
-                sendReturnToken();
-            }
+            m_txQueue->sendClientPacket(true);
         }
         break;
     }
     case MessageType::send_packet:
     {
-        assert(bb.get().size() >= 3);
+        assert(bb.size() >= 3);
         const int destAddr = gsl::to_integer<int>(bb[1]);
         // uint8_t srcAddr = bb[2];
         if (destAddr == m_ownAddress || m_ownAddress == 255 || destAddr == 255)
         {
             LOG_DEBUG << "Got a packet from: " << destAddr;
-            m_rxMsg.push_back(bb);
+            m_rxMsg.push_back(ByteVec(std::begin(bb), std::end(bb)));
         }
         break;
     }
@@ -148,7 +147,7 @@ PacketTypeCodec::rxRawPacket(const ByteBuf& bb)
     }
     if (m_master)
     {
-        m_master->masterPacketReceived(cmd, bb.get());
+        m_master->masterPacketReceived(cmd, bb);
     }
     deliverRxQueue();
 }
@@ -159,90 +158,25 @@ PacketTypeCodec::deliverRxQueue()
     while (!m_rxMsg.empty())
     {
         const int headerSize = 3;
-        ByteBuf bb(m_rxMsg.front());
-        LOG_DEBUG << "Deliver packet with size: " << bb.get().size();
-        assert(bb.get().size() >= 3);
+        // ByteBuf bb(m_rxMsg.front());
+        const auto& f = m_rxMsg.front();
+        MsgEtherIf::EtherPkt bb(f.data(), f.size());
+        LOG_DEBUG << "Deliver packet with size: " << bb.size();
+        assert(bb.size() >= 3);
         auto destAddr = gsl::to_integer<int>(bb[1]);
         auto srcAddr = gsl::to_integer<int>(bb[2]);
-        auto res = ByteVec(bb.get().begin() + headerSize, bb.get().end());
-        m_rxMsg.pop_front();
+        auto res = ByteVec(bb.begin() + headerSize, bb.end());
         if (m_msgHostIf)
         {
             m_msgHostIf->packetReceived(res, srcAddr, destAddr);
         }
+        m_rxMsg.pop_front();
     }
 }
 
 void
-PacketTypeCodec::sendReturnToken()
-{
-    ByteVec packet(2);
-
-    packet[0] = gsl::to_byte(static_cast<uint8_t>(MessageType::return_token));
-    packet[1] = gsl::to_byte(static_cast<uint8_t>(m_ownAddress));
-    m_msgEtherIf->sendMsg(packet);
-}
-
-void
-PacketTypeCodec::msgEtherRx_newMsg(const ByteVec& msg)
+PacketTypeCodec::msgEtherRx_newMsg(const MsgEtherIf::EtherPkt& packet)
 {
     // LOG_DEBUG << "Got packet from MsgEther interface.";
-    rxRawPacket(ByteBuf(msg));
-}
-
-void
-PacketTypeCodec::msgHostTx_sendAddressUpdate(int address,
-                                             std::array<byte, 6> mac)
-{
-    const int headerSize = 4;
-    ByteVec packet(mac.size() + headerSize);
-
-    packet[0] = to_byte(static_cast<uint8_t>(MessageType::mac_update));
-    packet[1] = to_byte(static_cast<uint8_t>(0xff));
-    packet[2] = to_byte(static_cast<uint8_t>(m_ownAddress));
-    packet[3] = to_byte(static_cast<uint8_t>(address));
-    std::copy(mac.begin(), mac.end(), packet.begin() + headerSize);
-    m_txMsg.push_back(ByteBuf(packet));
-}
-
-void
-PacketTypeCodec::sendPacket(const ByteVec& data, int address)
-{
-    const int headerSize = 3;
-    ByteVec packet(data.size() + headerSize);
-
-    packet[0] = to_byte(static_cast<uint8_t>(MessageType::send_packet));
-    packet[1] = to_byte(static_cast<uint8_t>(address));
-    packet[2] = to_byte(static_cast<uint8_t>(m_ownAddress));
-    std::copy(data.begin(), data.end(), packet.begin() + headerSize);
-
-    m_txMsg.push_back(ByteBuf(packet));
-}
-
-bool
-PacketTypeCodec::sendClientPacket()
-{
-    if (m_txMsg.empty())
-    {
-        LOG_DEBUG << "Nothing to send from own client.";
-        return false;
-    }
-    auto packet = m_txMsg.front();
-    m_msgEtherIf->sendMsg(packet.get());
-    m_txMsg.pop_front();
-    return true;
-}
-
-void
-PacketTypeCodec::sendMasterPacket(const ByteVec& packet)
-{
-    m_msgEtherIf->sendMsg(packet);
-}
-
-void
-PacketTypeCodec::msgHostTx_sendPacket(const ByteVec& data, int srcAddr,
-                                      int destAddr)
-{
-    LOG_DEBUG << "Try to send packet from " << srcAddr << " to " << destAddr;
-    sendPacket(data, destAddr);
+    rxRawPacket(packet);
 }

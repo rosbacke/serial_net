@@ -42,6 +42,7 @@ class SNConfig
         std_io,
         socat_tun,
         socat_tap,
+        tap,
         mode_max_num
     };
     static std::string toString(Mode mode);

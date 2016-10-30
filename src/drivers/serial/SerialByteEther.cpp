@@ -34,14 +34,15 @@
 #include <termios.h>
 #include <unistd.h>
 
+#include "../../hal/PosixIf.h"
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
 using namespace gsl;
 
-SerialByteEther::SerialByteEther(const std::string& device)
-    : m_fd(-1), m_rxCB(nullptr)
+SerialByteEther::SerialByteEther(const std::string& device, SerialHal hal)
+    : m_fd(-1), m_rxCB(nullptr), m_hal(hal)
 {
     LOG_DEBUG << "start setup";
     setup(device);
@@ -52,7 +53,7 @@ SerialByteEther::~SerialByteEther()
 {
     if (m_fd != -1)
     {
-        ::close(m_fd);
+        m_hal.m_file->close(m_fd);
     }
 }
 
@@ -73,7 +74,7 @@ void
 SerialByteEther::sendByte(byte myByte)
 {
     uint8_t tmp = to_integer<uint8_t>(myByte);
-    int res = ::write(m_fd, &tmp, 1);
+    int res = m_hal.m_file->write(m_fd, &tmp, 1);
     if (res == 1)
     {
         LOG_TRACE << "Wrote 1 byte:" << +tmp;
@@ -91,17 +92,10 @@ SerialByteEther::addClient(ByteEtherIf::RxIf* cb)
 }
 
 bool
-SerialByteEther::execute()
-{
-    readSerial();
-    return false;
-}
-
-bool
 SerialByteEther::readSerial()
 {
     uint8_t rxBuf[256];
-    ssize_t size = ::read(m_fd, &rxBuf, 256);
+    ssize_t size = m_hal.m_file->read(m_fd, &rxBuf, 256);
     if (size > 0 && m_rxCB != nullptr)
     {
         LOG_TRACE << "Read " << size << " bytes.";
@@ -134,25 +128,25 @@ SerialByteEther::setup(const std::string& deviceName)
     tio.c_cc[VMIN] = 1;
     tio.c_cc[VTIME] = 5;
 
-    m_fd = ::open(deviceName.c_str(), O_RDWR | O_NONBLOCK);
+    m_fd = m_hal.m_file->open(deviceName.c_str(), O_RDWR | O_NONBLOCK);
     if (m_fd <= 0)
     {
         LOG_ERROR << "Failed to open serial device: " << deviceName
                   << " error:" << strerror(errno);
         throw std::runtime_error("Failed opening serial port.");
     }
-    ::cfsetospeed(&tio, B115200); // 115200 baud
-    ::cfsetispeed(&tio, B115200); // 115200 baud
-    ::tcsetattr(m_fd, TCSANOW, &tio);
+    m_hal.m_serial->cfsetospeed(&tio, B115200); // 115200 baud
+    m_hal.m_serial->cfsetispeed(&tio, B115200); // 115200 baud
+    m_hal.m_serial->tcsetattr(m_fd, TCSANOW, &tio);
     setRTS(m_fd, 0);
 
     // Seems like setting the RTS happens to late and result in a
     // ghost byte being generated. Wait a while to let it settle and read it
     // Should be fine since we do not promise serial services until the setup
     // exits.
-    usleep(20000);
+    m_hal.m_sleep->usleep(20000);
     uint8_t buf[4];
-    ::read(m_fd, buf, 4);
+    m_hal.m_file->read(m_fd, buf, 4);
 }
 
 int
@@ -160,7 +154,7 @@ SerialByteEther::setRTS(int fd, int level)
 {
     int status;
 
-    if (ioctl(fd, TIOCMGET, &status) == -1)
+    if (m_hal.m_serial->ioctl_TIOCMGET(fd, &status) == -1)
     {
         perror("setRTS(): TIOCMGET");
         return 0;
@@ -169,7 +163,7 @@ SerialByteEther::setRTS(int fd, int level)
         status |= TIOCM_RTS;
     else
         status &= ~TIOCM_RTS;
-    if (ioctl(fd, TIOCMSET, &status) == -1)
+    if (m_hal.m_serial->ioctl_TIOCMSET(fd, &status) == -1)
     {
         perror("setRTS(): TIOCMSET");
         return 0;

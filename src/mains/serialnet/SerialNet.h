@@ -52,7 +52,12 @@ class ByteEtherIf;
 class MsgEtherIf;
 class StdstreamPipeHostDriver;
 class SocatTunHostDriver;
+class SocatTapHostDriver;
+class TapHostDriver;
 class MsgToByteAdapter;
+class SerialHalReal;
+class TxQueue;
+class PacketTypeCodec;
 
 /**
  * Application class for the utility serial net.
@@ -75,9 +80,6 @@ class SerialNet
     // Current mode of the program.
     SNConfig::Mode m_mode;
 
-    // Vector to schedule processor time.
-    std::vector<RuntimeIf*> m_runtime;
-
     // Interface to the lower level frame interface.
     MsgEtherIf* m_msgEther;
 
@@ -87,21 +89,24 @@ class SerialNet
     // Configuration from file/various timing constants.
 
     Config m_config;
+    React::MainLoop m_loop;
+    std::unique_ptr<SerialHalReal> m_serialHalReal;
     std::unique_ptr<PacketTypeCodec> m_packetTypeCodec;
+    std::unique_ptr<TxQueue> m_txQueue;
 
     std::unique_ptr<StdstreamPipeHostDriver> m_stdHostStdstreamDriver;
     std::unique_ptr<SocatTunHostDriver> m_socatTunHostDriver;
     std::unique_ptr<SocatTapHostDriver> m_socatTapHostDriver;
+    std::unique_ptr<TapHostDriver> m_tapHostDriver;
     std::unique_ptr<AddressCache> m_addressCache;
 
     std::unique_ptr<MsgToByteAdapter> m_msgToByteAdapter;
+
     std::unique_ptr<SerialByteEther> m_serialByteEther;
 
     std::unique_ptr<Master> m_master;
 
     std::unique_ptr<WSDump> m_wsDump;
-
-    React::MainLoop m_loop;
 };
 
 #endif /* SRC_MAINS_SERIALNET_SERIALNET_H_ */

@@ -41,12 +41,13 @@ setupOptions(po::options_description& desc)
     desc.add_options()("help", "produce help message")(
         "usage", "Show summary of command line options")(
         "version", "Show git version of the program.")(
-        "serial_device", po::value<std::string>(),
+        "serial-device,d", po::value<std::string>(),
         "Name of serial device for byte interface.")(
         "mode", po::value<std::string>(),
         "Mode the program should work in. Allowed: std_in, std_out, std_io, "
-        "socat_tun.")("address", po::value<int>()->default_value(255),
-                      "Local address on the serial net. Value between 1 - 32")(
+        "socat_tun, socat_tap, tap.")(
+        "address", po::value<int>()->default_value(255),
+        "Local address on the serial net. Value between 1 - 32")(
         "dest_address", po::value<int>()->default_value(255),
         "For mode ipipe. Address where to send incoming data to. Value between "
         "1 - 32")("master,m",
@@ -106,7 +107,7 @@ main(int argc, const char* argv[])
                   << std::endl;
         return 1;
     }
-    if (vm.count("serial_device") < 1)
+    if (vm.count("serial-device") < 1)
     {
         std::cout << "Need serial device.\n\n" << desc << std::endl;
         return 1;

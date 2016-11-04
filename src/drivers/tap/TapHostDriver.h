@@ -29,10 +29,14 @@
 #include "interfaces/MsgHostIf.h"
 #include "reactcpp.h"
 
+class PosixFileIf;
+class PosixTunTapIf;
+
 class TapHostDriver : public MsgHostIf
 {
   public:
-    TapHostDriver(int myAddr, AddressCache* ac);
+    TapHostDriver(int myAddr, AddressCache* ac, PosixFileIf* pfi,
+                  PosixTunTapIf* ptti);
     virtual ~TapHostDriver();
 
     void startTransfer(MsgHostIf::TxIf* txIf, React::Loop& loop);
@@ -55,10 +59,14 @@ class TapHostDriver : public MsgHostIf
     }
 
   private:
+    int tun_alloc(char* dev, unsigned tunFlags);
+
     void setupCallback(React::Loop& mainLoop);
     TapProtocol m_tap;
 
     int m_tun_fd;
+    PosixFileIf* m_pfi;
+    PosixTunTapIf* m_ptti;
 };
 
 #endif /* SRC_DRIVERS_TAP_TAPHOSTDRIVER_H_ */

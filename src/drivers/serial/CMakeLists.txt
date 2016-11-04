@@ -7,3 +7,4 @@ file(GLOB serial_SRC
 add_library(serial ${serial_SRC})
 
 target_link_libraries (serial reactcpp)
+target_link_libraries (serial hal)

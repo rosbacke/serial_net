@@ -41,10 +41,12 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "hal/PosixIf.h"
 #include "utility/Log.h"
 
-TapHostDriver::TapHostDriver(int myAddr, AddressCache* ac)
-    : m_tap(myAddr, ac), m_tun_fd(-1)
+TapHostDriver::TapHostDriver(int myAddr, AddressCache* ac, PosixFileIf* pfi,
+                             PosixTunTapIf* ptti)
+    : m_tap(myAddr, ac, pfi), m_tun_fd(-1), m_pfi(pfi), m_ptti(ptti)
 {
 }
 
@@ -52,27 +54,24 @@ TapHostDriver::~TapHostDriver()
 {
     if (m_tun_fd > 0)
     {
-        ::close(m_tun_fd);
+        m_pfi->close(m_tun_fd);
     }
 }
 
-namespace
-{
-
 int
-tun_alloc(char* dev, unsigned tunFlags)
+TapHostDriver::tun_alloc(char* dev, unsigned tunFlags)
 {
     struct ifreq ifr;
     int fd, err;
 
     LOG_DEBUG << "tun_alloc";
 
-    if ((fd = open("/dev/net/tun", O_RDWR)) < 0)
+    if ((fd = m_pfi->open("/dev/net/tun", O_RDWR)) < 0)
     {
         LOG_ERROR << "Can not open /dev/net/tun error.";
         return -1;
     }
-    memset(&ifr, 0, sizeof(ifr));
+    ::memset(&ifr, 0, sizeof(ifr));
 
     /* Flags: IFF_TUN   - TUN device (no Ethernet headers)
      *        IFF_TAP   - TAP device
@@ -81,19 +80,18 @@ tun_alloc(char* dev, unsigned tunFlags)
      */
     ifr.ifr_flags = tunFlags;
     if (*dev)
-        strncpy(ifr.ifr_name, dev, IFNAMSIZ);
+        ::strncpy(ifr.ifr_name, dev, IFNAMSIZ);
 
-    if ((err = ioctl(fd, TUNSETIFF, (void*)&ifr)) < 0)
+    if ((err = m_ptti->ioctl_TUNSETIFF(fd, (void*)&ifr)) < 0)
     {
         LOG_ERROR << "Failed to ioctl on tun device.." << errno;
-        close(fd);
+        m_pfi->close(fd);
         return err;
     }
-    strcpy(dev, ifr.ifr_name);
+    ::strcpy(dev, ifr.ifr_name);
     LOG_DEBUG << "tun_alloc success : fd " << fd;
 
     return fd;
-}
 }
 
 void

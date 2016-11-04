@@ -24,7 +24,17 @@ struct Helper : public ByteEtherIf::RxIf
 {
 	Helper(ByteEtherIf* beIf, std::string res, 	React::MainLoop& loop)
 		 : m_ser(beIf), m_target(res), m_loop(loop)  {}
-	virtual void newByte(byte myByte)  override
+
+
+	void receiveBytes(const gsl::span<gsl::byte>& bytes) override
+	{
+		for (auto i : bytes)
+		{
+			newByte(i);
+		}
+	}
+
+	void newByte(byte myByte)
 	{
 		std::cerr << "Read: " << to_integer<int>(myByte) << std::endl;
 		m_data.push_back(to_integer<char>(myByte));
@@ -62,10 +72,8 @@ int main(int argc, const char *argv[])
 	Helper helper(static_cast<ByteEtherIf*>(&ser), str, loop);
 	ser.addClient(&helper);
 
-	for(auto i : str)
-	{
-		ser.sendByte(gsl::to_byte(static_cast<uint8_t>(i)));
-	}
+	auto sp = span<const byte>(reinterpret_cast<const byte *>(str.data()), str.size());
+	ser.sendBytes(sp);
 	loop.run();
 	if (helper.m_data == helper.m_target)
 	{

@@ -50,7 +50,7 @@
 class SocatTapHostDriver : public MsgHostIf
 {
   public:
-    SocatTapHostDriver(int myAddr, AddressCache* ac);
+    SocatTapHostDriver(int myAddr, AddressCache* ac, PosixFileIf* pfi);
     virtual ~SocatTapHostDriver();
 
     void startTransfer(MsgHostIf::TxIf* txIf, React::Loop& loop);

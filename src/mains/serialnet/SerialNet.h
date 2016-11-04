@@ -27,6 +27,8 @@
 
 #include "core/PacketTypeCodec.h"
 #include "drivers/serial/SerialByteEther.h"
+#include "hal/PosixFileReal.h"
+#include "hal/PosixTunTapReal.h"
 #include "interfaces/MsgEtherIf.h"
 #include "interfaces/RuntimeIf.h"
 #include "utility/Config.h"
@@ -80,6 +82,10 @@ class SerialNet
     // Current mode of the program.
     SNConfig::Mode m_mode;
 
+    // interface toward a posix system.
+    PosixFileReal m_posixFileIf;
+    PosixTunTapReal m_posixTunTapIf;
+
     // Interface to the lower level frame interface.
     MsgEtherIf* m_msgEther;
 
@@ -87,7 +93,6 @@ class SerialNet
     MsgHostIf* m_msgHost;
 
     // Configuration from file/various timing constants.
-
     Config m_config;
     React::MainLoop m_loop;
     std::unique_ptr<SerialHalReal> m_serialHalReal;

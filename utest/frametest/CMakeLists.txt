@@ -4,5 +4,5 @@ file(GLOB frametest_SRC
     "*.cpp"
 )
 
-add_executable(frametest ${frametest_SRC})
-target_link_libraries(frametest core)
+#add_executable(frametest ${frametest_SRC})
+#target_link_libraries(frametest core)

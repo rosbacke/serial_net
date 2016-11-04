@@ -24,8 +24,8 @@
 
 #include "TapProtocol.h"
 
+#include "hal/PosixIf.h"
 #include "utility/Log.h"
-
 #include <array>
 #include <unistd.h>
 
@@ -99,7 +99,7 @@ TapProtocol::doRead(int fd)
     constexpr size_t bufSize = 1600;
 
     rx.resize(bufSize);
-    readLen = ::read(fd, rx.data(), bufSize);
+    readLen = m_posixFileIf->read(fd, rx.data(), bufSize);
     rx.resize(readLen);
     TapHeader* tapHeader = reinterpret_cast<TapHeader*>(rx.data());
 
@@ -125,21 +125,6 @@ TapProtocol::doRead(int fd)
     }
 }
 
-#if 0
-void
-SocatTapHostDriver::setupCallback(React::Loop& mainLoop)
-{
-    // we'd like to be notified when input is available on stdin
-    mainLoop.onReadable(STDIN_FILENO, [this]() -> bool {
-        LOG_DEBUG << "Read from stdin.";
-        this->doRead(STDIN_FILENO);
-
-        // return true, so that we also return future read events
-        return true;
-    });
-}
-#endif
-
 /**
  * Called when a packet was received from the serial net.
  */
@@ -161,7 +146,7 @@ TapProtocol::packetReceived(int fd, const ByteVec& data, int srcAddr,
                   << !destMac.first;
         return;
     }
-    int writeLen = ::write(fd, data.data(), data.size());
+    int writeLen = m_posixFileIf->write(fd, data.data(), data.size());
     if (writeLen != (int)data.size())
     {
         LOG_INFO << "Unexpected write len in data, data:" << writeLen;

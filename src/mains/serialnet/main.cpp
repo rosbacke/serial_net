@@ -38,29 +38,35 @@ namespace po = boost::program_options;
 void
 setupOptions(po::options_description& desc)
 {
-    desc.add_options()("help", "produce help message")(
-        "usage", "Show summary of command line options")(
-        "version", "Show git version of the program.")(
-        "serial-device,d", po::value<std::string>(),
-        "Name of serial device for byte interface.")(
-        "mode", po::value<std::string>(),
-        "Mode the program should work in. Allowed: std_in, std_out, std_io, "
-        "socat_tun, socat_tap, tap.")(
-        "address", po::value<int>()->default_value(255),
-        "Local address on the serial net. Value between 1 - 32")(
-        "dest_address", po::value<int>()->default_value(255),
-        "For mode ipipe. Address where to send incoming data to. Value between "
-        "1 - 32")("master,m",
-                  "Start the master part. Exactly one master "
-                  "should be active for each serial_net.")(
-        "mtimeout", po::value<int>()->default_value(-1),
-        "Stop the master after given amount of time (sec)")(
-        "log,l", po::value<int>()->default_value(2),
-        "Log level. (0=trace, 4=error)")(
-        "wsdump", po::value<std::string>(),
-        "Dump all serial packets to a named pipe, suitable for test2pcap")(
-        "endwithmaster",
-        "Quit the client if we receive a 'master_stop' message.");
+    desc.add_options()                                    //
+        ("help", "produce help message")                  //
+        ("usage", "Show summary of command line options") //
+        ("version", "Show git version of the program.")   //
+        ("serial-device,d", po::value<std::string>(),
+         "Name of serial device for byte interface.") //
+        ("serial-options", po::value<std::string>()->default_value(""),
+         "Colon sep. list of options for serial device. Ex: "
+         "<none>|<pulldown>|<rs485_te>") //
+        ("mode", po::value<std::string>(),
+         "Mode the program should work in. Allowed: std_in, std_out, std_io, "
+         "socat_tun, socat_tap, tap.") //
+        ("address", po::value<int>()->default_value(255),
+         "Local address on the serial net. Value between 1 - 32") //
+        ("dest_address", po::value<int>()->default_value(255),
+         "For mode ipipe. Address where to send incoming data to. Value "
+         "between 1 - 32") //
+        ("master,m",
+         "Start the master part. Exactly one master should be active for each "
+         "serial_net.") //
+        ("mtimeout", po::value<int>()->default_value(-1),
+         "Stop the master after given amount of time (sec)") //
+        ("log,l", po::value<int>()->default_value(2),
+         "Log level. (0=trace, 4=error)") //
+        ("wsdump", po::value<std::string>(),
+         "Dump all serial packets to a named pipe, suitable for test2pcap") //
+        ("endwithmaster",
+         "Quit the client if we receive a 'master_stop' message.") //
+        ;
 }
 
 int

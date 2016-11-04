@@ -27,6 +27,8 @@
 #include "utility/Log.h"
 #include "utility/Utility.h"
 
+#include "PosixSerialUtils.h"
+
 #include <cerrno>
 #include <fcntl.h>
 #include <stdexcept>
@@ -34,34 +36,32 @@
 #include <termios.h>
 #include <unistd.h>
 
-#include "../../hal/PosixIf.h"
+#include "hal/PosixIf.h"
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
 using namespace gsl;
 
-SerialByteEther::SerialByteEther(const std::string& device, SerialHal hal)
-    : m_fd(-1), m_rxCB(nullptr), m_hal(hal)
+SerialByteEther::SerialByteEther(const std::string& device, SerialHal hal,
+                                 RtsOptions rts)
+    : m_fd(hal.m_file), m_rxCB(nullptr), m_hal(hal)
 {
     LOG_DEBUG << "start setup";
     setup(device);
+    setupRts(rts);
     LOG_DEBUG << "end setup";
 }
 
 SerialByteEther::~SerialByteEther()
 {
-    if (m_fd != -1)
-    {
-        m_hal.m_file->close(m_fd);
-    }
 }
 
 void
 SerialByteEther::registerReadCB(React::MainLoop& mainLoop)
 {
     // we'd like to be notified when input is available on stdin
-    mainLoop.onReadable(m_fd, [this]() -> bool {
+    mainLoop.onReadable(m_fd.get(), [this]() -> bool {
         readSerial();
 
         // return true, so that we also return future read events
@@ -71,16 +71,16 @@ SerialByteEther::registerReadCB(React::MainLoop& mainLoop)
 
 // Send a byte to the ether.
 void
-SerialByteEther::sendByte(byte myByte)
+SerialByteEther::sendBytes(const gsl::span<const gsl::byte>& bytes)
 {
-    uint8_t tmp = to_integer<uint8_t>(myByte);
-    int res = m_hal.m_file->write(m_fd, &tmp, 1);
-    if (res == 1)
+    auto len = bytes.size();
+    int res = m_hal.m_file->write(m_fd, bytes.data(), len);
+    if (res == len)
     {
-        LOG_TRACE << "Wrote 1 byte:" << +tmp;
+        LOG_TRACE << "Wrote " << len << " byte(s)";
         return;
     }
-    LOG_ERROR << "Failed to write serial byte.";
+    LOG_ERROR << "Failed to write all serial bytes.";
     throw std::runtime_error("Failed serial write.");
 }
 
@@ -94,15 +94,12 @@ SerialByteEther::addClient(ByteEtherIf::RxIf* cb)
 bool
 SerialByteEther::readSerial()
 {
-    uint8_t rxBuf[256];
+    gsl::byte rxBuf[256];
     ssize_t size = m_hal.m_file->read(m_fd, &rxBuf, 256);
     if (size > 0 && m_rxCB != nullptr)
     {
         LOG_TRACE << "Read " << size << " bytes.";
-        for (int i = 0; i < size; ++i)
-        {
-            m_rxCB->newByte(to_byte(rxBuf[i]));
-        }
+        m_rxCB->receiveBytes(gsl::span<byte>(rxBuf, size));
         return true;
     }
     int myErrno = errno;
@@ -117,56 +114,43 @@ SerialByteEther::readSerial()
 void
 SerialByteEther::setup(const std::string& deviceName)
 {
-    struct termios tio;
+    using ps = PosixSerialUtils;
 
-    ::memset(&tio, 0, sizeof(tio));
-    tio.c_iflag = 0;
-    tio.c_oflag = 0;
-    tio.c_cflag =
-        CS8 | CREAD | CLOCAL; // 8n1, see termios.h for more information
-    tio.c_lflag = 0;
-    tio.c_cc[VMIN] = 1;
-    tio.c_cc[VTIME] = 5;
-
-    m_fd = m_hal.m_file->open(deviceName.c_str(), O_RDWR | O_NONBLOCK);
+    m_fd.set(m_hal.m_file->open(deviceName.c_str(), O_RDWR | O_NONBLOCK));
     if (m_fd <= 0)
     {
         LOG_ERROR << "Failed to open serial device: " << deviceName
                   << " error:" << strerror(errno);
         throw std::runtime_error("Failed opening serial port.");
     }
-    m_hal.m_serial->cfsetospeed(&tio, B115200); // 115200 baud
-    m_hal.m_serial->cfsetispeed(&tio, B115200); // 115200 baud
-    m_hal.m_serial->tcsetattr(m_fd, TCSANOW, &tio);
-    setRTS(m_fd, 0);
 
-    // Seems like setting the RTS happens to late and result in a
-    // ghost byte being generated. Wait a while to let it settle and read it
-    // Should be fine since we do not promise serial services until the setup
-    // exits.
-    m_hal.m_sleep->usleep(20000);
-    uint8_t buf[4];
-    m_hal.m_file->read(m_fd, buf, 4);
+    ps::set8N1Termios(*m_hal.m_serial, m_fd, ps::Baudrate::BR_115200);
 }
 
-int
-SerialByteEther::setRTS(int fd, int level)
+void
+SerialByteEther::setupRts(RtsOptions rts)
 {
-    int status;
+    using ps = PosixSerialUtils;
 
-    if (m_hal.m_serial->ioctl_TIOCMGET(fd, &status) == -1)
+    switch (rts)
     {
-        perror("setRTS(): TIOCMGET");
-        return 0;
+    case RtsOptions::None:
+        break;
+    case RtsOptions::pulldown:
+        ps::setRTS(*m_hal.m_serial, m_fd, ps::IOState::negated);
+
+        // Seems like setting the RTS happens to late and result in a
+        // ghost byte being generated. Wait a while to let it settle and read it
+        // Should be fine since we do not promise serial services until the
+        // setup
+        // exits.
+        m_hal.m_sleep->usleep(20000);
+        uint8_t buf[4];
+        m_hal.m_file->read(m_fd, buf, 4);
+        break;
+
+    case RtsOptions::rs485_te:
+        ps::setRS485Mode(*m_hal.m_serial, m_fd, true, true);
+        break;
     }
-    if (level)
-        status |= TIOCM_RTS;
-    else
-        status &= ~TIOCM_RTS;
-    if (m_hal.m_serial->ioctl_TIOCMSET(fd, &status) == -1)
-    {
-        perror("setRTS(): TIOCMSET");
-        return 0;
-    }
-    return 1;
 }

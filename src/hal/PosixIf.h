@@ -28,8 +28,9 @@
 /**
  * Give an interface for the low level posix operations to allow better testing.
  * Keep same function signature as the original functions. Intended to be as
- * close
- * to the metal as possible.
+ * close to the metal as possible.
+ * Exception is ioctl which is variadic. Make one function for each used ioctl
+ * constant.
  */
 #include <sys/types.h>
 #include <termios.h>
@@ -42,10 +43,12 @@ class PosixFileIf
   public:
     virtual int open(const char* pathname, int flags) = 0;
     virtual int open(const char* pathname, int flags, mode_t mode) = 0;
-    virtual ssize_t read(int fd, void* buf, size_t size) = 0;
+    virtual ssize_t read(int fd, void* buf, size_t size) const = 0;
     virtual ssize_t write(int fd, const void* buf, size_t size) = 0;
     virtual int close(int fd) = 0;
-    virtual ~PosixFileIf(){};
+
+  protected:
+    ~PosixFileIf(){};
 };
 
 /**
@@ -54,8 +57,12 @@ class PosixFileIf
 class PosixSleepIf
 {
   public:
-    virtual int usleep(useconds_t usec) = 0;
-    virtual ~PosixSleepIf(){};
+    virtual int usleep(useconds_t usec) const = 0;
+
+    virtual unsigned int sleep(unsigned int sec) const = 0;
+
+  protected:
+    ~PosixSleepIf(){};
 };
 
 /**
@@ -72,9 +79,50 @@ class PosixSerialIf
     // Note: ioctl uses variadic argument list. Do not work well with
     // inheritance.
     // Use separate functions for each ioctl type.
-    virtual int ioctl_TIOCMGET(int fd, int* status_p) = 0;
+
+    /**
+     * From https://linux.die.net/man/4/tty_ioctl
+     *
+     * TIOCMGET,TIOCMSET Modem control lines. get/set bitmask.
+     *
+     * example of bits:
+     * TIOCM_LE        DSR (data set ready/line enable)
+     * TIOCM_DTR       DTR (data terminal ready)
+     * TIOCM_RTS       RTS (request to send)
+     *
+     * Setting a bit correspond to outputting an asserted state.
+     * (checked by measuring RTS)
+     */
+    virtual int ioctl_TIOCMGET(int fd, int* status_p) const = 0;
     virtual int ioctl_TIOCMSET(int fd, int* status_p) = 0;
-    virtual ~PosixSerialIf(){};
+
+    /**
+     * Control RTS level during RS485 mode.
+     * Expect a pointer to struct serial_rs485 to be supplied.
+     */
+    virtual int ioctl_TIOCGRS485(int fd, void* status_p) const = 0;
+    virtual int ioctl_TIOCSRS485(int fd, void* status_p) = 0;
+
+  protected:
+    ~PosixSerialIf(){};
+};
+
+/**
+ * Auxillary TUN/TAP  functions.
+ */
+class PosixTunTapIf
+{
+  public:
+    // Note: ioctl uses variadic argument list. Do not work well with
+    // inheritance. Use separate functions for each ioctl type.
+
+    // Set up flags for the TUN interface. Note: ifr_p expected to be
+    // a 'struct ifreq *' but according to ref doc, a void * should be fed
+    // to the function.
+    virtual int ioctl_TUNSETIFF(int fd, void* ifr_p) = 0;
+
+  protected:
+    ~PosixTunTapIf(){};
 };
 
 #endif /* SRC_UTILITY_POSIXFILEIF_H_ */

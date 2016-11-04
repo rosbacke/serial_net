@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.2)
 project (serial_net C CXX)
 
 # SET (CMAKE_CXX_COMPILER "g++-4.9")
-SET (CMAKE_CXX_FLAGS "-std=c++14 -pthread -Wall")
+SET (CMAKE_CXX_FLAGS "-std=c++14 -pthread -Wall -ggdb")
 # "-Wsuggest-override -Wsuggest-final-methods -Wsuggest-final-types")
 
 enable_testing()

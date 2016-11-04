@@ -32,9 +32,13 @@
 class PosixSleepReal final : public PosixSleepIf
 {
   public:
-    int usleep(useconds_t usec) override
+    int usleep(useconds_t usec) const final
     {
         return ::usleep(usec);
+    }
+    unsigned int sleep(unsigned int sec) const final
+    {
+        return ::sleep(sec);
     }
 };
 

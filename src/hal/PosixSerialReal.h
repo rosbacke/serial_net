@@ -34,26 +34,34 @@
 class PosixSerialReal final : public PosixSerialIf
 {
   public:
-    int cfsetospeed(struct termios* termios_p, speed_t speed) override
+    int cfsetospeed(struct termios* termios_p, speed_t speed) final
     {
         return ::cfsetospeed(termios_p, speed);
     }
-    int cfsetispeed(struct termios* termios_p, speed_t speed) override
+    int cfsetispeed(struct termios* termios_p, speed_t speed) final
     {
         return ::cfsetispeed(termios_p, speed);
     }
     int tcsetattr(int fd, int optional_actions,
-                  const struct termios* termios_p) override
+                  const struct termios* termios_p) final
     {
         return ::tcsetattr(fd, optional_actions, termios_p);
     }
-    int ioctl_TIOCMGET(int fd, int* status_p) override
+    int ioctl_TIOCMGET(int fd, int* status_p) const final
     {
         return ::ioctl(fd, TIOCMGET, status_p);
     }
-    int ioctl_TIOCMSET(int fd, int* status_p) override
+    int ioctl_TIOCMSET(int fd, int* status_p) final
     {
         return ::ioctl(fd, TIOCMSET, status_p);
+    }
+    int ioctl_TIOCGRS485(int fd, void* status_p) const final
+    {
+        return ::ioctl(fd, TIOCGRS485, status_p);
+    }
+    int ioctl_TIOCSRS485(int fd, void* status_p) final
+    {
+        return ::ioctl(fd, TIOCSRS485, status_p);
     }
 };
 

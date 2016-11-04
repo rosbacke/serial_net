@@ -73,8 +73,10 @@ class MsgToByteAdapter : public MsgEtherIf, public ByteEtherIf::RxIf
 
     void checkTimeout();
 
+    void receiveBytes(const gsl::span<gsl::byte>& bytes) override;
+
     // Receive a byte from the byte interface.
-    virtual void newByte(gsl::byte byte) override;
+    void newByte(gsl::byte byte);
 
     ByteEtherIf* m_beIf = nullptr;
     MsgEtherIf::RxIf* m_cb = nullptr;

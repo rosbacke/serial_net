@@ -27,6 +27,8 @@
 
 #include <string>
 
+#include "drivers/serial/SerialByteEther.h"
+
 /**
  * Captured configuration from the command line arguments
  */
@@ -47,6 +49,11 @@ class SNConfig
     };
     static std::string toString(Mode mode);
     static Mode toMode(std::string mode);
+
+    using RtsOptions = SerialByteEther::RtsOptions;
+
+    static std::string toString(RtsOptions option);
+    static RtsOptions toOption(const std::string& str);
 
     static double constexpr packetReplyTimeout = 0.01;
 

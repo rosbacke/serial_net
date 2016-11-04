@@ -23,10 +23,11 @@
  */
 
 #include "SocatTunHostDriver.h"
+#include "hal/PosixIf.h"
 #include "utility/Log.h"
 
-SocatTunHostDriver::SocatTunHostDriver(int myAddr)
-    : m_myAddr(myAddr), m_txIf(nullptr)
+SocatTunHostDriver::SocatTunHostDriver(int myAddr, PosixFileIf* pfi)
+    : m_myAddr(myAddr), m_txIf(nullptr), m_posixFileIf(pfi)
 {
 }
 
@@ -80,7 +81,7 @@ SocatTunHostDriver::doRead(int fd)
     {
     case ReadType::header:
     {
-        readlen = ::read(fd, m_readHeader.data(), headerLen);
+        readlen = m_posixFileIf->read(fd, m_readHeader.data(), headerLen);
         if (readlen != headerLen)
         {
             LOG_INFO << "Unexpected read len in header, len:" << readlen;
@@ -111,7 +112,7 @@ SocatTunHostDriver::doRead(int fd)
         destAddr = ipv4Header->m_destAddr[3];
 
         void* start = m_rxTunPacket.data() + sizeof(TunIpv4Header);
-        readlen = ::read(fd, start, readMaxLen);
+        readlen = m_posixFileIf->read(fd, start, readMaxLen);
         m_readType = ReadType::header;
         if (readlen != readMaxLen)
         {
@@ -151,7 +152,8 @@ void
 SocatTunHostDriver::packetReceived(const ByteVec& data, int srcAddr,
                                    int destAddr)
 {
-    int writeLen = ::write(STDOUT_FILENO, data.data(), data.size());
+    int writeLen =
+        m_posixFileIf->write(STDOUT_FILENO, data.data(), data.size());
     if (writeLen != (int)data.size())
     {
         LOG_INFO << "Unexpected write len in data, data:" << writeLen;

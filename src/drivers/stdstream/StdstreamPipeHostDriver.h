@@ -31,10 +31,12 @@
 #include <iterator>
 #include <reactcpp.h>
 
+class PosixFileIf;
+
 class StdstreamPipeHostDriver : public MsgHostIf
 {
   public:
-    StdstreamPipeHostDriver(int myAddr);
+    StdstreamPipeHostDriver(int myAddr, PosixFileIf* posixIf);
     virtual ~StdstreamPipeHostDriver();
 
     void startStdout(int rxAddress);
@@ -66,6 +68,9 @@ class StdstreamPipeHostDriver : public MsgHostIf
 
     // Where we send our packet for delivery to the ether.
     MsgHostIf::TxIf* m_txHandler;
+
+    // Interface for the posix filer operations.
+    PosixFileIf* m_posixIf;
 };
 
 #endif /* SRC_DRIVERS_STDSTREAM_STDSTREAMPIPEHOSTDRIVER_H_ */

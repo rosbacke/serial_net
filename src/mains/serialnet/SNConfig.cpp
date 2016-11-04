@@ -37,21 +37,21 @@ SNConfig::toString(Mode mode)
 {
 #define CASE(x)   \
     case Mode::x: \
-        return #x;
+        return #x
     switch (mode)
     {
-        CASE(unknown)
-        CASE(none)
-        CASE(std_in)
-        CASE(std_out)
-        CASE(std_io)
-        CASE(socat_tun)
-        CASE(socat_tap)
-        CASE(tap)
-
-        CASE(mode_max_num)
+        CASE(unknown);
+        CASE(none);
+        CASE(std_in);
+        CASE(std_out);
+        CASE(std_io);
+        CASE(socat_tun);
+        CASE(socat_tap);
+        CASE(tap);
+        CASE(mode_max_num);
     }
     return "";
+#undef CASE
 }
 
 #define IF_MODE(x)      \
@@ -75,4 +75,45 @@ SNConfig::toMode(std::string mode)
     {
         return Mode::unknown;
     }
+}
+#undef IF_MODE
+
+namespace
+{
+using RtsOptions = SerialByteEther::RtsOptions;
+}
+
+#define IF_MODE(x)            \
+    if (str == #x)            \
+    {                         \
+        return RtsOptions::x; \
+    }                         \
+    else
+
+RtsOptions
+SNConfig::toOption(const std::string& str)
+{
+    IF_MODE(None)
+    IF_MODE(pulldown)
+    IF_MODE(rs485_te)
+    {
+        return RtsOptions::None;
+    }
+}
+#undef IF_MODE
+
+std::string
+SNConfig::toString(RtsOptions option)
+{
+#define CASE(x)         \
+    case RtsOptions::x: \
+        return #x
+
+    switch (option)
+    {
+        CASE(None);
+        CASE(pulldown);
+        CASE(rs485_te);
+    }
+    return "";
 }

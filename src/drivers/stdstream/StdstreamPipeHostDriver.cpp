@@ -24,10 +24,13 @@
 
 #include "StdstreamPipeHostDriver.h"
 
+#include "hal/PosixIf.h"
 #include "utility/Log.h"
 
-StdstreamPipeHostDriver::StdstreamPipeHostDriver(int myAddr)
-    : m_myAddr(myAddr), m_rxAddr(-1), m_destAddr(-1), m_txHandler(nullptr)
+StdstreamPipeHostDriver::StdstreamPipeHostDriver(int myAddr,
+                                                 PosixFileIf* posixIf)
+    : m_myAddr(myAddr), m_rxAddr(-1), m_destAddr(-1), m_txHandler(nullptr),
+      m_posixIf(posixIf)
 {
 }
 
@@ -60,7 +63,7 @@ StdstreamPipeHostDriver::setupCallback(React::MainLoop& mainLoop)
         gsl::byte buffer[maxRead];
         ByteVec buf;
         ssize_t dataRead;
-        dataRead = ::read(STDIN_FILENO, buffer, maxRead);
+        dataRead = m_posixIf->read(STDIN_FILENO, buffer, maxRead);
         if (dataRead > 0)
         {
             buf.resize(dataRead);
@@ -86,9 +89,11 @@ void
 StdstreamPipeHostDriver::packetReceived(const ByteVec& data, int srcAddr,
                                         int destAddr)
 {
-
+    m_posixIf->write(STDOUT_FILENO, &data[0], data.size());
+#if 0
     std::transform(data.begin(), data.end(),
                    std::ostream_iterator<uint8_t>(std::cout),
                    [](gsl::byte el) { return gsl::to_integer<char>(el); });
     std::cout.flush();
+#endif
 }

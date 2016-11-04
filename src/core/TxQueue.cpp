@@ -81,8 +81,8 @@ TxQueue::sendReturnToken()
 {
     ByteVec packet(2);
 
-    packet[0] = gsl::to_byte(static_cast<uint8_t>(MessageType::return_token));
-    packet[1] = gsl::to_byte(static_cast<uint8_t>(m_ownAddress));
+    packet[0] = to_byte(static_cast<uint8_t>(MessageType::return_token));
+    packet[1] = to_byte(static_cast<uint8_t>(m_ownAddress));
     m_msgEtherIf->sendMsg(packet);
 }
 

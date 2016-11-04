@@ -30,6 +30,8 @@
 
 #include <array>
 
+class PosixFileIf;
+
 /**
  * Simple host side driver using stdin/stdout. It is intended to be connected
  * as a TUN device via the socat utility.
@@ -47,7 +49,7 @@
 class SocatTunHostDriver : public MsgHostIf
 {
   public:
-    SocatTunHostDriver(int myAddr);
+    SocatTunHostDriver(int myAddr, PosixFileIf* pfi);
     virtual ~SocatTunHostDriver();
 
     void startTransfer(MsgHostIf::TxIf* txIf, React::Loop& loop);
@@ -84,6 +86,8 @@ class SocatTunHostDriver : public MsgHostIf
 
     int m_myAddr;
     MsgHostIf::TxIf* m_txIf;
+
+    PosixFileIf* m_posixFileIf;
 };
 
 #endif /* SRC_DRIVERS_TUN_SOCATTUNHOSTDRIVER_H_ */

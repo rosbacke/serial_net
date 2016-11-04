@@ -39,10 +39,7 @@ MsgToByteAdapter::sendMsg(const ByteVec& msg)
 {
     ByteVec raw;
     m_codec.encodePacket(msg, raw);
-    for (auto i : raw)
-    {
-        m_beIf->sendByte(i);
-    }
+    m_beIf->sendBytes(raw);
 }
 
 void
@@ -64,6 +61,17 @@ MsgToByteAdapter::packetRxInProgress()
 {
     checkTimeout();
     return m_codec.rxInProgress();
+}
+
+void
+MsgToByteAdapter::receiveBytes(const gsl::span<gsl::byte>& bytes)
+{
+    checkTimeout();
+    m_lastUpdate = now();
+    for (auto data : bytes)
+    {
+        m_codec.decodeByte(data);
+    }
 }
 
 void

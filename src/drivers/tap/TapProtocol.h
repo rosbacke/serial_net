@@ -28,6 +28,8 @@
 #include "core/AddressCache.h"
 #include "interfaces/MsgHostIf.h"
 
+class PosixFileIf;
+
 class TapProtocol
 {
     using MACAddr = AddressCache::MacAddr;
@@ -38,7 +40,8 @@ class TapProtocol
     struct ArpIpv4Header;
 
   public:
-    TapProtocol(int myAddr, AddressCache* ac) : m_myAddr(myAddr), m_cache(ac)
+    TapProtocol(int myAddr, AddressCache* ac, PosixFileIf* pfi)
+        : m_myAddr(myAddr), m_cache(ac), m_posixFileIf(pfi)
     {
     }
 
@@ -63,6 +66,7 @@ class TapProtocol
     int m_myAddr = -1;
     MsgHostIf::TxIf* m_txIf = nullptr;
     AddressCache* m_cache = nullptr;
+    PosixFileIf* m_posixFileIf;
 };
 
 #endif /* SRC_DRIVERS_TAP_TAPPROTOCOL_H_ */

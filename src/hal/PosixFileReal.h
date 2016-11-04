@@ -35,23 +35,23 @@
 class PosixFileReal final : public PosixFileIf
 {
   public:
-    int open(const char* pathname, int flags) override
+    int open(const char* pathname, int flags) final
     {
         return ::open(pathname, flags);
     }
-    int open(const char* pathname, int flags, mode_t mode) override
+    int open(const char* pathname, int flags, mode_t mode) final
     {
         return ::open(pathname, flags, mode);
     }
-    ssize_t read(int fd, void* buf, size_t size) override
+    ssize_t read(int fd, void* buf, size_t size) const final
     {
         return ::read(fd, buf, size);
     }
-    ssize_t write(int fd, const void* buf, size_t size) override
+    ssize_t write(int fd, const void* buf, size_t size) final
     {
         return ::write(fd, buf, size);
     }
-    int close(int fd) override
+    int close(int fd) final
     {
         return ::close(fd);
     }

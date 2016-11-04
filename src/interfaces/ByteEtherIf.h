@@ -41,14 +41,14 @@ class ByteEtherIf
     class RxIf
     {
       public:
-        virtual void newByte(gsl::byte byte) = 0;
+        virtual void receiveBytes(const gsl::span<gsl::byte>& bytes) = 0;
     };
 
     ByteEtherIf(){};
     virtual ~ByteEtherIf(){};
 
     // Send a byte to the ether.
-    virtual void sendByte(gsl::byte byte) = 0;
+    virtual void sendBytes(const gsl::span<const gsl::byte>& bytes) = 0;
 
     // Register a receiver.
     virtual void addClient(RxIf* cb) = 0;

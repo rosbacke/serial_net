@@ -29,7 +29,9 @@
 #include "interfaces/RuntimeIf.h"
 #include "reactcpp.h"
 
-#include "../../hal/PosixIf.h"
+#include "hal/PosixFd.h"
+#include "hal/PosixIf.h"
+
 #include <string>
 
 class PosixFileIf;
@@ -53,31 +55,39 @@ class SerialByteEther : public ByteEtherIf
         PosixSerialIf* m_serial;
     };
 
-    SerialByteEther(const std::string& device, SerialHal hal);
+    enum class RtsOptions
+    {
+        None,
+        pulldown,
+        rs485_te
+    };
+
+    SerialByteEther(const std::string& device, SerialHal hal,
+                    RtsOptions rts = RtsOptions::None);
     virtual ~SerialByteEther();
 
     // Set up callback based reading when data is available.
     void registerReadCB(React::MainLoop& mainLoop);
 
     // Send a byte to the ether.
-    virtual void sendByte(gsl::byte curByte) override;
+    virtual void sendBytes(const gsl::span<const gsl::byte>& bytes) override;
 
     // Register a receiver.
     virtual void addClient(ByteEtherIf::RxIf* cb) override;
 
     int getFd() const
     {
-        return m_fd;
+        return m_fd.get();
     }
 
   private:
     bool readSerial();
 
-    int setRTS(int fd, int level);
-
     void setup(const std::string& device);
 
-    int m_fd;
+    void setupRts(RtsOptions rts);
+
+    PosixFd m_fd;
     ByteEtherIf::RxIf* m_rxCB;
     SerialHal m_hal;
 };

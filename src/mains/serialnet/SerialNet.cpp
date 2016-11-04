@@ -63,6 +63,9 @@ SerialNet::start(boost::program_options::variables_map& vm)
     std::string device = vm["serial-device"].as<std::string>();
     std::string mode = vm["mode"].as<std::string>();
 
+    SNConfig::RtsOptions rtsOption =
+        SNConfig::toOption(vm["serial-options"].as<std::string>());
+
     if (vm.count("wsdump") > 0)
     {
         std::string fname = vm["wsdump"].as<std::string>();
@@ -92,8 +95,8 @@ SerialNet::start(boost::program_options::variables_map& vm)
 
     // Hard code serial interface initially.
     m_serialHalReal = std::make_unique<SerialHalReal>();
-    m_serialByteEther =
-        std::make_unique<SerialByteEther>(device, m_serialHalReal->get());
+    m_serialByteEther = std::make_unique<SerialByteEther>(
+        device, m_serialHalReal->get(), rtsOption);
     m_serialByteEther->registerReadCB(m_loop);
 
     m_msgToByteAdapter = std::make_unique<MsgToByteAdapter>();
@@ -116,7 +119,7 @@ SerialNet::start(boost::program_options::variables_map& vm)
     if (usePipeHostDriver)
     {
         m_stdHostStdstreamDriver =
-            std::make_unique<StdstreamPipeHostDriver>(myAddr);
+            std::make_unique<StdstreamPipeHostDriver>(myAddr, &m_posixFileIf);
         switch (m_mode)
         {
         case SNConfig::Mode::std_out:
@@ -141,15 +144,16 @@ SerialNet::start(boost::program_options::variables_map& vm)
     }
     else if (m_mode == SNConfig::Mode::socat_tun)
     {
-        m_socatTunHostDriver = std::make_unique<SocatTunHostDriver>(myAddr);
+        m_socatTunHostDriver =
+            std::make_unique<SocatTunHostDriver>(myAddr, &m_posixFileIf);
         m_socatTunHostDriver->startTransfer(m_txQueue.get(), m_loop);
         m_msgHost = m_socatTunHostDriver.get();
     }
     else if (m_mode == SNConfig::Mode::socat_tap)
     {
         m_addressCache = std::make_unique<AddressCache>();
-        m_socatTapHostDriver =
-            std::make_unique<SocatTapHostDriver>(myAddr, m_addressCache.get());
+        m_socatTapHostDriver = std::make_unique<SocatTapHostDriver>(
+            myAddr, m_addressCache.get(), &m_posixFileIf);
         m_packetTypeCodec->setAddressCache(m_addressCache.get());
         m_socatTapHostDriver->startTransfer(m_txQueue.get(), m_loop);
 
@@ -158,8 +162,8 @@ SerialNet::start(boost::program_options::variables_map& vm)
     else if (m_mode == SNConfig::Mode::tap)
     {
         m_addressCache = std::make_unique<AddressCache>();
-        m_tapHostDriver =
-            std::make_unique<TapHostDriver>(myAddr, m_addressCache.get());
+        m_tapHostDriver = std::make_unique<TapHostDriver>(
+            myAddr, m_addressCache.get(), &m_posixFileIf, &m_posixTunTapIf);
         m_packetTypeCodec->setAddressCache(m_addressCache.get());
         m_tapHostDriver->startTransfer(m_txQueue.get(), m_loop);
 

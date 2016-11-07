@@ -50,7 +50,7 @@
 class SocatTapHostDriver : public MsgHostIf
 {
   public:
-    SocatTapHostDriver(int myAddr, AddressCache* ac, PosixFileIf* pfi);
+    SocatTapHostDriver(LocalAddress myAddr, AddressCache* ac, PosixFileIf* pfi);
     virtual ~SocatTapHostDriver();
 
     void startTransfer(MsgHostIf::TxIf* txIf, React::Loop& loop);
@@ -58,8 +58,8 @@ class SocatTapHostDriver : public MsgHostIf
     /**
      * Called when a packet was received from the serial net.
      */
-    virtual void packetReceived(const ByteVec& data, int srcAddr,
-                                int destAddr) override
+    virtual void packetReceived(const ByteVec& data, LocalAddress srcAddr,
+                                LocalAddress destAddr) override
     {
         m_tap.packetReceived(STDOUT_FILENO, data, srcAddr, destAddr);
     }

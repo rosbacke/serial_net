@@ -87,13 +87,12 @@ MsgToByteAdapter::checkTimeout()
 {
     if (m_loop && m_codec.rxInProgress())
     {
-        m_lastUpdate = m_loop->now();
-        ;
-        if (now() - m_lastUpdate > 0.1)
+        auto now_ = now();
+        if (now_ - m_lastUpdate > 0.1)
         {
             // Timeout.
             m_codec.reset();
-            m_lastUpdate = now();
         }
+        m_lastUpdate = now_;
     }
 }

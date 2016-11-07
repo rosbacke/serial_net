@@ -26,7 +26,6 @@
 #define SRC_CORE_MASTER_H_
 
 #include "Addresses.h"
-#include "core/Core.h"
 #include "core/PacketTypeCodec.h"
 
 #include <reactcpp.h>
@@ -40,7 +39,7 @@ class Master : MasterRxIf::RxIf
 {
   public:
     Master(React::Loop& loop, MasterRxIf* mr, MasterTxIf* mt,
-           int ownClientAddress, Config* cfg);
+           LocalAddress ownClientAddress, Config* cfg);
 
     virtual ~Master();
 
@@ -123,7 +122,7 @@ class Master : MasterRxIf::RxIf
                          const MsgEtherIf::EtherPkt& packet) override;
 
     // Send the token to the next client.
-    void sendToken(int destAddr);
+    void sendToken(LocalAddress destAddr);
     void sendMasterStartStop(bool stop);
 
     void postEvent(EvId event);
@@ -142,7 +141,7 @@ class Master : MasterRxIf::RxIf
     StateFkn m_state;
     StateFkn m_nextState;
 
-    int m_ownClientAddress;
+    LocalAddress m_ownClientAddress;
     std::deque<EvId> m_events;
 
     // Helper for delayed callback. Will derive a weak ptr to this

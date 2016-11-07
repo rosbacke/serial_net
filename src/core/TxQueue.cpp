@@ -29,16 +29,19 @@
 
 using gsl::to_byte;
 using gsl::byte;
+using packet::toHeader;
 
 void
-TxQueue::sendPacket(const MsgHostIf::HostPkt& data, int address)
+TxQueue::sendPacket(const MsgHostIf::HostPkt& data, LocalAddress address)
 {
-    const int headerSize = 3;
+    using PktType = packet::SendPacket;
+    auto headerSize = sizeof(PktType);
     ByteVec packet(data.size() + headerSize);
+    auto p = toHeader<PktType>(packet.data());
 
-    packet[0] = to_byte(static_cast<uint8_t>(MessageType::send_packet));
-    packet[1] = to_byte(static_cast<uint8_t>(address));
-    packet[2] = to_byte(static_cast<uint8_t>(m_ownAddress));
+    p->m_type = MessageType::send_packet;
+    p->m_destAddr = address;
+    p->m_srcAddr = m_ownAddress;
     std::copy(data.begin(), data.end(), packet.begin() + headerSize);
 
     m_txMsg.push_back(packet);
@@ -69,8 +72,8 @@ TxQueue::sendMasterPacket(const ByteVec& packet)
 }
 
 void
-TxQueue::msgHostTx_sendPacket(const MsgHostIf::HostPkt& data, int srcAddr,
-                              int destAddr)
+TxQueue::msgHostTx_sendPacket(const MsgHostIf::HostPkt& data,
+                              LocalAddress srcAddr, LocalAddress destAddr)
 {
     LOG_DEBUG << "Try to send packet from " << srcAddr << " to " << destAddr;
     sendPacket(data, destAddr);
@@ -80,22 +83,27 @@ void
 TxQueue::sendReturnToken()
 {
     ByteVec packet(2);
+    auto p = toHeader<packet::ReturnToken>(packet.data());
 
-    packet[0] = to_byte(static_cast<uint8_t>(MessageType::return_token));
-    packet[1] = to_byte(static_cast<uint8_t>(m_ownAddress));
+    p->m_type = MessageType::return_token;
+    p->m_src = m_ownAddress;
     m_msgEtherIf->sendMsg(packet);
 }
 
 void
-TxQueue::msgHostTx_sendAddressUpdate(int address, std::array<byte, 6> mac)
+TxQueue::msgHostTx_sendAddressUpdate(LocalAddress address,
+                                     std::array<byte, 6> mac)
 {
-    const int headerSize = 4;
-    ByteVec packet(mac.size() + headerSize);
+    using PktType = packet::MacUpdate;
+    auto headerSize = sizeof(PktType);
+    ByteVec packet(headerSize);
+    auto p = toHeader<PktType>(packet.data());
 
-    packet[0] = to_byte(static_cast<uint8_t>(MessageType::mac_update));
-    packet[1] = to_byte(static_cast<uint8_t>(0xff));
-    packet[2] = to_byte(static_cast<uint8_t>(m_ownAddress));
-    packet[3] = to_byte(static_cast<uint8_t>(address));
-    std::copy(mac.begin(), mac.end(), packet.begin() + headerSize);
+    p->m_type = MessageType::mac_update;
+    p->m_destAddr = LocalAddress::broadcast;
+    p->m_srcAddr = m_ownAddress;
+    p->m_hintAddr = address;
+    std::copy(mac.begin(), mac.end(), p->m_mac.data());
+
     m_txMsg.push_back(packet);
 }

@@ -44,18 +44,14 @@
 #include "hal/PosixIf.h"
 #include "utility/Log.h"
 
-TapHostDriver::TapHostDriver(int myAddr, AddressCache* ac, PosixFileIf* pfi,
-                             PosixTunTapIf* ptti)
-    : m_tap(myAddr, ac, pfi), m_tun_fd(-1), m_pfi(pfi), m_ptti(ptti)
+TapHostDriver::TapHostDriver(LocalAddress myAddr, AddressCache* ac,
+                             PosixFileIf* pfi, PosixTunTapIf* ptti)
+    : m_tap(myAddr, ac, pfi), m_tun_fd(pfi), m_pfi(pfi), m_ptti(ptti)
 {
 }
 
 TapHostDriver::~TapHostDriver()
 {
-    if (m_tun_fd > 0)
-    {
-        m_pfi->close(m_tun_fd);
-    }
 }
 
 int
@@ -109,7 +105,7 @@ TapHostDriver::setupCallback(React::Loop& mainLoop)
 
     /* Connect to the device */
     strcpy(tun_name, "tap0");
-    m_tun_fd = tun_alloc(tun_name, IFF_TAP); /* tap interface */
+    m_tun_fd.set(tun_alloc(tun_name, IFF_TAP)); /* tap interface */
 
     if (m_tun_fd < 0)
     {

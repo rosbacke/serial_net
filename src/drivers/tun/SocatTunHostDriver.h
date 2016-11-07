@@ -49,7 +49,7 @@ class PosixFileIf;
 class SocatTunHostDriver : public MsgHostIf
 {
   public:
-    SocatTunHostDriver(int myAddr, PosixFileIf* pfi);
+    SocatTunHostDriver(LocalAddress myAddr, PosixFileIf* pfi);
     virtual ~SocatTunHostDriver();
 
     void startTransfer(MsgHostIf::TxIf* txIf, React::Loop& loop);
@@ -57,8 +57,8 @@ class SocatTunHostDriver : public MsgHostIf
     /**
      * Called when a packet was received from the serial net.
      */
-    virtual void packetReceived(const ByteVec& data, int srcAddr,
-                                int destAddr) override;
+    virtual void packetReceived(const ByteVec& data, LocalAddress srcAddr,
+                                LocalAddress destAddr) override;
 
     /**
      * Inform the driver where it is supposed to send its packets.
@@ -84,7 +84,7 @@ class SocatTunHostDriver : public MsgHostIf
     void setupCallback(React::Loop& mainLoop);
     void doRead(int fileDescriptor);
 
-    int m_myAddr;
+    LocalAddress m_myAddr;
     MsgHostIf::TxIf* m_txIf;
 
     PosixFileIf* m_posixFileIf;

@@ -25,6 +25,7 @@
 #ifndef SRC_CORE_MSGHOSTIF_H_
 #define SRC_CORE_MSGHOSTIF_H_
 
+#include "SerialProtocol.h"
 #include "utility/Utility.h"
 
 #include <array>
@@ -52,10 +53,11 @@ class MsgHostIf
     {
       public:
         // The core implements this function.
-        virtual void msgHostTx_sendPacket(const HostPkt& data, int srcAddr,
-                                          int destAddr) = 0;
+        virtual void msgHostTx_sendPacket(const HostPkt& data,
+                                          LocalAddress srcAddr,
+                                          LocalAddress destAddr) = 0;
 
-        virtual void msgHostTx_sendAddressUpdate(int address,
+        virtual void msgHostTx_sendAddressUpdate(LocalAddress address,
                                                  std::array<gsl::byte, 6> mac)
         {
         }
@@ -66,8 +68,8 @@ class MsgHostIf
     /**
      * Called when a packet was received from the serial net.
      */
-    virtual void packetReceived(const ByteVec& data, int srcAddr,
-                                int destAddr) = 0;
+    virtual void packetReceived(const ByteVec& data, LocalAddress srcAddr,
+                                LocalAddress destAddr) = 0;
 
     /**
      * Inform the driver where it is supposed to send its packets.

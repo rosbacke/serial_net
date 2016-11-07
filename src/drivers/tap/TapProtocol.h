@@ -40,7 +40,7 @@ class TapProtocol
     struct ArpIpv4Header;
 
   public:
-    TapProtocol(int myAddr, AddressCache* ac, PosixFileIf* pfi)
+    TapProtocol(LocalAddress myAddr, AddressCache* ac, PosixFileIf* pfi)
         : m_myAddr(myAddr), m_cache(ac), m_posixFileIf(pfi)
     {
     }
@@ -58,12 +58,13 @@ class TapProtocol
     /**
      * Called when a packet was received from the serial net.
      */
-    void packetReceived(int fd, const ByteVec& data, int srcAddr, int destAddr);
+    void packetReceived(int fd, const ByteVec& data, LocalAddress srcAddr,
+                        LocalAddress destAddr);
 
   private:
     void checkArp(const TapHeader* tap);
 
-    int m_myAddr = -1;
+    LocalAddress m_myAddr = LocalAddress::null_addr;
     MsgHostIf::TxIf* m_txIf = nullptr;
     AddressCache* m_cache = nullptr;
     PosixFileIf* m_posixFileIf;

@@ -34,14 +34,14 @@ AddressCache::AddressCache()
 {
 }
 
-int
+LocalAddress
 AddressCache::getLocalAddress(const MacAddr& addr)
 {
     if (addr == broadcastMac)
     {
-        return 0xff;
+        return LocalAddress::broadcast;
     }
-    if (m_myLocalAddr != -1 && m_myMac == addr)
+    if (m_myLocalAddr != LocalAddress::null_addr && m_myMac == addr)
     {
         return m_myLocalAddr;
     }
@@ -50,15 +50,15 @@ AddressCache::getLocalAddress(const MacAddr& addr)
                      [&](const Entry& el) { return addr == el.second; });
     if (iter == m_table.end())
     {
-        return -1;
+        return LocalAddress::null_addr;
     }
     return iter->first;
 }
 
 void
-AddressCache::setAddress(int local, const MacAddr& mac)
+AddressCache::setAddress(LocalAddress local, const MacAddr& mac)
 {
-    if (local == 0xff)
+    if (local == LocalAddress::broadcast)
     {
         return;
     }
@@ -76,9 +76,9 @@ AddressCache::setAddress(int local, const MacAddr& mac)
 }
 
 void
-AddressCache::updateMyMAC(int local, const MacAddr& mac)
+AddressCache::updateMyMAC(LocalAddress local, const MacAddr& mac)
 {
-    if (m_myLocalAddr != -1)
+    if (m_myLocalAddr != LocalAddress::null_addr)
     {
         return;
     }
@@ -87,9 +87,9 @@ AddressCache::updateMyMAC(int local, const MacAddr& mac)
 }
 
 std::pair<bool, AddressCache::MacAddr>
-AddressCache::getMac(int local)
+AddressCache::getMac(LocalAddress local)
 {
-    if (local == 0xff)
+    if (local == LocalAddress::broadcast)
     {
         return std::make_pair(true, broadcastMac);
     }

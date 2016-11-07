@@ -45,7 +45,7 @@ std::vector<Master::State> Master::m_states = {
 };
 
 Master::Master(React::Loop& loop, MasterRxIf* mr, MasterTxIf* mt,
-               int ownClientAddress, Config* cfg)
+               LocalAddress ownClientAddress, Config* cfg)
     : m_loop(loop), m_masterRx(mr), m_masterTx(mt), m_state(initState),
       m_nextState(initState), m_ownClientAddress(ownClientAddress),
       m_addresses(cfg->masterLowAddress(), cfg->masterHighAddress(), loop, cfg)
@@ -184,9 +184,6 @@ Master::masterPacketReceived(MessageType type,
 
     case MessageType::master_started:
     case MessageType::master_ended:
-    case MessageType::send_tun_packet:
-    case MessageType::lookup_address:
-    case MessageType::address_data:
         break;
     case MessageType::mac_update:
         postEvent(EvId::rx_client_packet);
@@ -203,13 +200,15 @@ Master::tokenTimeout()
 }
 
 void
-Master::sendToken(int destAddr)
+Master::sendToken(LocalAddress destAddr)
 {
-    LOG_TRACE << "Send token to: " << destAddr;
+    LOG_TRACE << "Send token to: " << int(destAddr);
     ByteVec packet;
     packet.resize(2);
-    packet[0] = to_byte(static_cast<uint8_t>(MessageType::grant_token));
-    packet[1] = to_byte(static_cast<uint8_t>(destAddr));
+    packet::GrantToken* p =
+        reinterpret_cast<packet::GrantToken*>(packet.data());
+    p->m_type = MessageType::grant_token;
+    p->m_tokenReceiver = destAddr;
     m_masterTx->sendMasterPacket(packet);
 }
 
@@ -217,11 +216,20 @@ void
 Master::sendMasterStartStop(bool stop)
 {
     LOG_INFO << "Send master "s + (stop ? "stop"s : "start"s);
-    ByteVec packet;
-    packet.resize(1);
 
-    packet[0] = to_byte(static_cast<uint8_t>(
-        stop ? MessageType::master_ended : MessageType::master_started));
+    ByteVec packet;
+    if (stop)
+    {
+        packet.resize(sizeof(packet::MasterEnded));
+        auto* p = packet::toHeader<packet::MasterEnded>(packet.data());
+        p->m_type = MessageType::master_ended;
+    }
+    else
+    {
+        packet.resize(sizeof(packet::MasterStarted));
+        auto* p = packet::toHeader<packet::MasterStarted>(packet.data());
+        p->m_type = MessageType::master_started;
+    }
     m_masterTx->sendMasterPacket(packet);
 }
 

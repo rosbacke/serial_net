@@ -90,7 +90,7 @@ void
 TapProtocol::doRead(int fd)
 {
     int readLen;
-    int destAddr = 0;
+    LocalAddress destAddr = LocalAddress::null_addr;
 
     std::vector<byte> rx;
 
@@ -109,7 +109,7 @@ TapProtocol::doRead(int fd)
     m_cache->updateMyMAC(m_myAddr, etherHeader->m_srcMAC);
 
     destAddr = m_cache->getLocalAddress(tapHeader->m_ether.m_destMAC);
-    if (destAddr == -1)
+    if (destAddr == LocalAddress::null_addr)
     {
         LOG_DEBUG << "Tap: no local address for mac. Skip tx.";
         return;
@@ -129,8 +129,8 @@ TapProtocol::doRead(int fd)
  * Called when a packet was received from the serial net.
  */
 void
-TapProtocol::packetReceived(int fd, const ByteVec& data, int srcAddr,
-                            int destAddr)
+TapProtocol::packetReceived(int fd, const ByteVec& data, LocalAddress srcAddr,
+                            LocalAddress destAddr)
 {
     LOG_DEBUG << "Try packet write, packetReceived.";
     if (m_cache == nullptr)

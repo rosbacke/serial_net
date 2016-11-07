@@ -26,6 +26,7 @@
 #define SRC_MASTER_ADDRESSES_H_
 
 #include "AddressLine.h"
+#include "interfaces/SerialProtocol.h"
 #include "reactcpp.h"
 #include "utility/Config.h"
 
@@ -47,23 +48,23 @@ class Addresses
             delay
         };
 
-        Action(State state, int addr, double time)
+        Action(State state, LocalAddress addr, double time)
             : m_action(state), m_address(addr), m_nextTime(time)
         {
         }
 
         static Action makeDelayAction(double time)
         {
-            return Action(State::delay, 0, time);
+            return Action(State::delay, LocalAddress::null_addr, time);
         }
 
-        static Action makeSendTokenAction(int addr)
+        static Action makeSendTokenAction(LocalAddress addr)
         {
             return Action(State::send_token, addr, 0.0);
         }
 
         State m_action;
-        int m_address;
+        LocalAddress m_address;
         double m_nextTime;
     };
 
@@ -89,27 +90,27 @@ class Addresses
     class QueueEl
     {
       public:
-        QueueEl() : m_address(0), m_nextTime(0.0)
+        QueueEl() : m_address(LocalAddress::null_addr), m_nextTime(0.0)
         {
         }
-        QueueEl(int addr, double nextTime)
+        QueueEl(LocalAddress addr, double nextTime)
             : m_address(addr), m_nextTime(nextTime)
         {
         }
 
-        int m_address;
+        LocalAddress m_address;
         double m_nextTime;
     };
 
     friend bool operator>(const QueueEl& lhs, const QueueEl& rhs);
 
-    using Address = int;
+    // using Address = int;
 
     void updateReadyQueue();
 
     double nextTime(AddressLine::State state);
 
-    AddressLine* find(int address);
+    AddressLine* find(LocalAddress address);
 
     std::vector<AddressLine> m_table;
 

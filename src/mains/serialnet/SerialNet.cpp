@@ -59,7 +59,7 @@ SerialNet::~SerialNet()
 void
 SerialNet::start(boost::program_options::variables_map& vm)
 {
-    int destAddr = 255;
+    auto destAddr = LocalAddress::broadcast;
     std::string device = vm["serial-device"].as<std::string>();
     std::string mode = vm["mode"].as<std::string>();
 
@@ -73,10 +73,10 @@ SerialNet::start(boost::program_options::variables_map& vm)
     }
 
     m_mode = SNConfig::toMode(mode);
-    int myAddr = vm["address"].as<int>();
+    LocalAddress myAddr = static_cast<LocalAddress>(vm["address"].as<int>());
 
     LOG_INFO << "mode: " << SNConfig::toString(m_mode);
-    LOG_INFO << "addr: " << myAddr;
+    LOG_INFO << "addr: " << (int)(myAddr);
 
     if (m_mode == SNConfig::Mode::std_in)
     {
@@ -87,7 +87,7 @@ SerialNet::start(boost::program_options::variables_map& vm)
         }
         else
         {
-            destAddr = vm["dest_address"].as<int>();
+            destAddr = vm["dest_address"].as<LocalAddress>();
         }
     }
 
@@ -103,7 +103,7 @@ SerialNet::start(boost::program_options::variables_map& vm)
     m_msgToByteAdapter->setByteIf(m_serialByteEther.get());
     m_msgToByteAdapter->setExecLoop(m_loop);
 
-    m_msgEther = static_cast<MsgEtherIf*>(m_msgToByteAdapter.get());
+    m_msgEther = m_msgToByteAdapter.get();
 
     m_txQueue = std::make_unique<TxQueue>(m_msgEther, myAddr);
     m_packetTypeCodec =
@@ -123,7 +123,7 @@ SerialNet::start(boost::program_options::variables_map& vm)
         switch (m_mode)
         {
         case SNConfig::Mode::std_out:
-            m_stdHostStdstreamDriver->startStdout(255);
+            m_stdHostStdstreamDriver->startStdout(LocalAddress::broadcast);
             break;
 
         case SNConfig::Mode::std_in:
@@ -132,7 +132,7 @@ SerialNet::start(boost::program_options::variables_map& vm)
             break;
 
         case SNConfig::Mode::std_io:
-            m_stdHostStdstreamDriver->startStdout(255);
+            m_stdHostStdstreamDriver->startStdout(LocalAddress::broadcast);
             m_stdHostStdstreamDriver->startStdin(destAddr, m_txQueue.get(),
                                                  m_loop);
             break;

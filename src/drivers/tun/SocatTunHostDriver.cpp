@@ -26,7 +26,9 @@
 #include "hal/PosixIf.h"
 #include "utility/Log.h"
 
-SocatTunHostDriver::SocatTunHostDriver(int myAddr, PosixFileIf* pfi)
+using gsl::to_byte;
+
+SocatTunHostDriver::SocatTunHostDriver(LocalAddress myAddr, PosixFileIf* pfi)
     : m_myAddr(myAddr), m_txIf(nullptr), m_posixFileIf(pfi)
 {
 }
@@ -75,8 +77,8 @@ void
 SocatTunHostDriver::doRead(int fd)
 {
     int readlen;
-    int srcAddr = 0;
-    int destAddr = 0;
+    LocalAddress srcAddr = LocalAddress::null_addr;
+    LocalAddress destAddr = LocalAddress::null_addr;
     switch (m_readType)
     {
     case ReadType::header:
@@ -108,8 +110,8 @@ SocatTunHostDriver::doRead(int fd)
         const Ipv4Header* ipv4Header = &tunIpv4Header->m_ipv4;
 
         int readMaxLen = m_rxTunPacket.size() - sizeof(TunIpv4Header);
-        srcAddr = ipv4Header->m_srcAddr[3];
-        destAddr = ipv4Header->m_destAddr[3];
+        srcAddr = toLocalAddress(to_byte(ipv4Header->m_srcAddr[3]));
+        destAddr = toLocalAddress(to_byte(ipv4Header->m_destAddr[3]));
 
         void* start = m_rxTunPacket.data() + sizeof(TunIpv4Header);
         readlen = m_posixFileIf->read(fd, start, readMaxLen);
@@ -149,8 +151,8 @@ SocatTunHostDriver::setupCallback(React::Loop& mainLoop)
  * Called when a packet was received from the serial net.
  */
 void
-SocatTunHostDriver::packetReceived(const ByteVec& data, int srcAddr,
-                                   int destAddr)
+SocatTunHostDriver::packetReceived(const ByteVec& data, LocalAddress srcAddr,
+                                   LocalAddress destAddr)
 {
     int writeLen =
         m_posixFileIf->write(STDOUT_FILENO, data.data(), data.size());

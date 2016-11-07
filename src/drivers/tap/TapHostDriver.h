@@ -26,6 +26,7 @@
 #define SRC_DRIVERS_TAP_TAPHOSTDRIVER_H_
 
 #include "TapProtocol.h"
+#include "hal/PosixFd.h"
 #include "interfaces/MsgHostIf.h"
 #include "reactcpp.h"
 
@@ -35,7 +36,7 @@ class PosixTunTapIf;
 class TapHostDriver : public MsgHostIf
 {
   public:
-    TapHostDriver(int myAddr, AddressCache* ac, PosixFileIf* pfi,
+    TapHostDriver(LocalAddress myAddr, AddressCache* ac, PosixFileIf* pfi,
                   PosixTunTapIf* ptti);
     virtual ~TapHostDriver();
 
@@ -44,8 +45,8 @@ class TapHostDriver : public MsgHostIf
     /**
      * Called when a packet was received from the serial net.
      */
-    virtual void packetReceived(const ByteVec& data, int srcAddr,
-                                int destAddr) override
+    virtual void packetReceived(const ByteVec& data, LocalAddress srcAddr,
+                                LocalAddress destAddr) override
     {
         m_tap.packetReceived(m_tun_fd, data, srcAddr, destAddr);
     }
@@ -64,7 +65,7 @@ class TapHostDriver : public MsgHostIf
     void setupCallback(React::Loop& mainLoop);
     TapProtocol m_tap;
 
-    int m_tun_fd;
+    PosixFd m_tun_fd;
     PosixFileIf* m_pfi;
     PosixTunTapIf* m_ptti;
 };

@@ -34,7 +34,7 @@ Addresses::Addresses(int minAddr, int maxAddr, React::Loop& loop, Config* cfg)
     for (int i = m_minAddr; i <= m_maxAddr; ++i)
     {
         m_table[i].setInit(State::active);
-        m_ready.push(QueueEl(i, now));
+        m_ready.push(QueueEl(static_cast<LocalAddress>(i), now));
     }
 }
 
@@ -62,9 +62,9 @@ Addresses::nextTime(AddressLine::State state)
 }
 
 AddressLine*
-Addresses::find(int address)
+Addresses::find(LocalAddress address)
 {
-    auto offset = address - m_minAddr;
+    auto offset = static_cast<int>(address) - m_minAddr;
     if (offset < static_cast<int>(m_table.size()) && offset >= 0)
     {
         return &m_table[offset];
@@ -78,7 +78,7 @@ Addresses::find(int address)
 void
 Addresses::gotReturnToken()
 {
-    int addr = m_ready.top().m_address;
+    auto addr = m_ready.top().m_address;
 
     auto line = find(addr);
     line->setState(AddressLine::State::idle);
@@ -94,8 +94,7 @@ Addresses::gotReturnToken()
 void
 Addresses::tokenTimeout()
 {
-    int addr = m_ready.top().m_address;
-
+    auto addr = m_ready.top().m_address;
     auto line = find(addr);
     line->setState(AddressLine::State::badClient);
 
@@ -110,8 +109,7 @@ Addresses::tokenTimeout()
 void
 Addresses::packetStarted()
 {
-    int addr = m_ready.top().m_address;
-
+    auto addr = m_ready.top().m_address;
     auto line = find(addr);
     line->setState(AddressLine::State::active);
 

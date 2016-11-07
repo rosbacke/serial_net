@@ -26,6 +26,7 @@
 #define SRC_DRIVERS_STDSTREAM_STDSTREAMPIPEHOSTDRIVER_H_
 
 #include "interfaces/MsgHostIf.h"
+#include "interfaces/SerialProtocol.h"
 
 #include <iostream>
 #include <iterator>
@@ -36,18 +37,19 @@ class PosixFileIf;
 class StdstreamPipeHostDriver : public MsgHostIf
 {
   public:
-    StdstreamPipeHostDriver(int myAddr, PosixFileIf* posixIf);
+    StdstreamPipeHostDriver(LocalAddress myAddr, PosixFileIf* posixIf);
     virtual ~StdstreamPipeHostDriver();
 
-    void startStdout(int rxAddress);
+    void startStdout(LocalAddress rxAddress);
 
-    void startStdin(int destAddr, TxIf* txIf, React::MainLoop& mainLoop);
+    void startStdin(LocalAddress destAddr, TxIf* txIf,
+                    React::MainLoop& mainLoop);
 
     /**
      * Called when a packet was received from the serial net.
      */
-    void packetReceived(const ByteVec& data, int srcAddr,
-                        int destAddr) override;
+    void packetReceived(const ByteVec& data, LocalAddress srcAddr,
+                        LocalAddress destAddr) override;
 
   private:
     virtual void setTxHandler(TxIf* txIf) override
@@ -58,13 +60,13 @@ class StdstreamPipeHostDriver : public MsgHostIf
     void setupCallback(React::MainLoop& mainLoop);
 
     // My address in the network.
-    int m_myAddr;
+    LocalAddress m_myAddr;
 
     // Address of the unit we are receiving data from.
-    int m_rxAddr;
+    LocalAddress m_rxAddr;
 
     // Address we send data to.
-    int m_destAddr;
+    LocalAddress m_destAddr;
 
     // Where we send our packet for delivery to the ether.
     MsgHostIf::TxIf* m_txHandler;

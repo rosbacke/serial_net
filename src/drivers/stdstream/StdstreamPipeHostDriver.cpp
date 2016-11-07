@@ -27,9 +27,10 @@
 #include "hal/PosixIf.h"
 #include "utility/Log.h"
 
-StdstreamPipeHostDriver::StdstreamPipeHostDriver(int myAddr,
+StdstreamPipeHostDriver::StdstreamPipeHostDriver(LocalAddress myAddr,
                                                  PosixFileIf* posixIf)
-    : m_myAddr(myAddr), m_rxAddr(-1), m_destAddr(-1), m_txHandler(nullptr),
+    : m_myAddr(myAddr), m_rxAddr(LocalAddress::null_addr),
+      m_destAddr(LocalAddress::null_addr), m_txHandler(nullptr),
       m_posixIf(posixIf)
 {
 }
@@ -39,13 +40,13 @@ StdstreamPipeHostDriver::~StdstreamPipeHostDriver()
 }
 
 void
-StdstreamPipeHostDriver::startStdout(int rxAddress)
+StdstreamPipeHostDriver::startStdout(LocalAddress rxAddress)
 {
     m_rxAddr = rxAddress;
 }
 
 void
-StdstreamPipeHostDriver::startStdin(int destAddr, TxIf* txIf,
+StdstreamPipeHostDriver::startStdin(LocalAddress destAddr, TxIf* txIf,
                                     React::MainLoop& mainLoop)
 {
     m_destAddr = destAddr;
@@ -61,23 +62,14 @@ StdstreamPipeHostDriver::setupCallback(React::MainLoop& mainLoop)
         // Enough to keep an ethernet frame.
         const constexpr int maxRead = 2000;
         gsl::byte buffer[maxRead];
-        ByteVec buf;
         ssize_t dataRead;
         dataRead = m_posixIf->read(STDIN_FILENO, buffer, maxRead);
         if (dataRead > 0)
         {
-            buf.resize(dataRead);
-            std::transform(buffer, buffer + dataRead, buf.begin(),
-                           [](const auto& el) -> gsl::byte {
-                               return gsl::to_byte(
-                                   static_cast<unsigned char>(el));
-                           });
-            MsgHostIf::HostPkt hostPkt(static_cast<const gsl::byte*>(buffer),
-                                       dataRead);
-            if (m_txHandler && m_destAddr > 0)
+            if (m_txHandler && m_destAddr != LocalAddress::null_addr)
             {
-                m_txHandler->msgHostTx_sendPacket(hostPkt, m_myAddr,
-                                                  m_destAddr);
+                m_txHandler->msgHostTx_sendPacket(
+                    MsgHostIf::HostPkt(buffer, dataRead), m_myAddr, m_destAddr);
             }
         }
         // return true, so that we also return future read events
@@ -86,14 +78,9 @@ StdstreamPipeHostDriver::setupCallback(React::MainLoop& mainLoop)
 }
 
 void
-StdstreamPipeHostDriver::packetReceived(const ByteVec& data, int srcAddr,
-                                        int destAddr)
+StdstreamPipeHostDriver::packetReceived(const ByteVec& data,
+                                        LocalAddress srcAddr,
+                                        LocalAddress destAddr)
 {
     m_posixIf->write(STDOUT_FILENO, &data[0], data.size());
-#if 0
-    std::transform(data.begin(), data.end(),
-                   std::ostream_iterator<uint8_t>(std::cout),
-                   [](gsl::byte el) { return gsl::to_integer<char>(el); });
-    std::cout.flush();
-#endif
 }

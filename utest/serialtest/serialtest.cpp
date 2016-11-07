@@ -69,7 +69,7 @@ int main(int argc, const char *argv[])
 	ser.registerReadCB(loop);
 
 	std::string str("Hello!");
-	Helper helper(static_cast<ByteEtherIf*>(&ser), str, loop);
+	Helper helper(&ser, str, loop);
 	ser.addClient(&helper);
 
 	auto sp = span<const byte>(reinterpret_cast<const byte *>(str.data()), str.size());

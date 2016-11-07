@@ -44,18 +44,16 @@ longEnough(const MsgEtherIf::EtherPkt& packet)
         LOG_WARN << "Packet less than 1 byte.";
         return false;
     }
-    const auto cmd = static_cast<MessageType>(packet[0]);
+    const auto cmd = byte2MessageType(packet[0]);
 
     using Entry = std::pair<MessageType, std::size_t>;
-    static Entry minLength[] = {
-        {MessageType::grant_token, std::size_t(FrameGrantToken::max_num)},
-        {MessageType::return_token, std::size_t(FrameReturnToken::max_num)},
-        {MessageType::master_started, 1},
-        {MessageType::master_ended, 1},
-        {MessageType::send_packet, std::size_t(FrameSendPacket::packet_data)},
-        {MessageType::send_tun_packet, 1},
-        {MessageType::mac_update, 10},
-        {MessageType::lookup_address, 1}};
+    static const Entry minLength[] = {
+        {MessageType::grant_token, sizeof(packet::GrantToken)},
+        {MessageType::return_token, sizeof(packet::ReturnToken)},
+        {MessageType::master_started, sizeof(packet::MasterStarted)},
+        {MessageType::master_ended, sizeof(packet::MasterEnded)},
+        {MessageType::send_packet, sizeof(packet::SendPacket)},
+        {MessageType::mac_update, sizeof(packet::MacUpdate)}};
 
     const auto end = minLength + ARRAY_SIZE(minLength);
     const auto iter = std::find_if(
@@ -71,7 +69,7 @@ longEnough(const MsgEtherIf::EtherPkt& packet)
 }
 
 PacketTypeCodec::PacketTypeCodec(MsgEtherIf* msgEtherIf, TxQueue* tx,
-                                 int ownAddress)
+                                 LocalAddress ownAddress)
     : m_msgEtherIf(msgEtherIf), m_msgHostIf(nullptr), m_txQueue(tx),
       m_master(nullptr), m_wsDump(nullptr), m_ownAddress(ownAddress)
 {
@@ -92,14 +90,14 @@ PacketTypeCodec::rxRawPacket(const MsgEtherIf::EtherPkt& bb)
     {
         m_wsDump->rxPacket(bb);
     }
-    auto cmd = static_cast<MessageType>(bb[0]);
+    const auto cmd = byte2MessageType(bb[0]);
     LOG_TRACE << "Command: " << int(cmd) << " raw len: " << bb.size();
 
     switch (cmd)
     {
     case MessageType::grant_token:
     {
-        const int msgOwnAddr = gsl::to_integer<int>(bb[1]);
+        const LocalAddress msgOwnAddr = toLocalAddress(bb[1]);
         if (msgOwnAddr == m_ownAddress && m_txQueue)
         {
             m_txQueue->sendClientPacket(true);
@@ -109,9 +107,11 @@ PacketTypeCodec::rxRawPacket(const MsgEtherIf::EtherPkt& bb)
     case MessageType::send_packet:
     {
         assert(bb.size() >= 3);
-        const int destAddr = gsl::to_integer<int>(bb[1]);
+        const LocalAddress destAddr = toLocalAddress(bb[1]);
         // uint8_t srcAddr = bb[2];
-        if (destAddr == m_ownAddress || m_ownAddress == 255 || destAddr == 255)
+        if (destAddr == m_ownAddress ||
+            m_ownAddress == LocalAddress::broadcast ||
+            destAddr == LocalAddress::broadcast)
         {
             LOG_DEBUG << "Got a packet from: " << destAddr;
             m_rxMsg.push_back(ByteVec(std::begin(bb), std::end(bb)));
@@ -134,7 +134,7 @@ PacketTypeCodec::rxRawPacket(const MsgEtherIf::EtherPkt& bb)
     {
         if (m_cache)
         {
-            const int localAddr = gsl::to_integer<int>(bb[3]);
+            const auto localAddr = toLocalAddress(bb[3]);
             std::array<byte, 6> mac;
             std::copy(bb.data() + 4, bb.data() + 10, mac.begin());
             m_cache->setAddress(localAddr, mac);
@@ -163,8 +163,8 @@ PacketTypeCodec::deliverRxQueue()
         MsgEtherIf::EtherPkt bb(f.data(), f.size());
         LOG_DEBUG << "Deliver packet with size: " << bb.size();
         assert(bb.size() >= 3);
-        auto destAddr = gsl::to_integer<int>(bb[1]);
-        auto srcAddr = gsl::to_integer<int>(bb[2]);
+        auto destAddr = toLocalAddress(bb[1]);
+        auto srcAddr = toLocalAddress(bb[2]);
         auto res = ByteVec(bb.begin() + headerSize, bb.end());
         if (m_msgHostIf)
         {

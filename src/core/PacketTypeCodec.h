@@ -49,8 +49,8 @@ class PacketTypeCodec : public MsgEtherIf::RxIf, public MasterRxIf
     struct RxPacket
     {
         ByteVec m_data;
-        int srcAddr;
-        int destAddr;
+        LocalAddress srcAddr;
+        LocalAddress destAddr;
     };
 
     void setHostIf(MsgHostIf* msgHostIf)
@@ -63,11 +63,12 @@ class PacketTypeCodec : public MsgEtherIf::RxIf, public MasterRxIf
         m_masterEndedCB = fkn;
     }
 
-    PacketTypeCodec(MsgEtherIf* msgEtherIf, TxQueue* tx, int ownAddress);
+    PacketTypeCodec(MsgEtherIf* msgEtherIf, TxQueue* tx,
+                    LocalAddress ownAddress);
 
     virtual ~PacketTypeCodec();
 
-    void sendPacket(const MsgHostIf::HostPkt& data, int address);
+    void sendPacket(const MsgHostIf::HostPkt& data, LocalAddress address);
 
     bool empty() const
     {
@@ -113,7 +114,7 @@ class PacketTypeCodec : public MsgEtherIf::RxIf, public MasterRxIf
     MasterRxIf::RxIf* m_master;
     WSDump* m_wsDump;
 
-    int m_ownAddress;
+    LocalAddress m_ownAddress;
     std::deque<ByteVec> m_rxMsg;
 
     std::function<void()> m_masterEndedCB;

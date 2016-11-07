@@ -25,55 +25,120 @@
 #ifndef SRC_INTERFACES_SERIALPROTOCOL_H_
 #define SRC_INTERFACES_SERIALPROTOCOL_H_
 
-enum class MessageType
+#include "gsl/gsl"
+#include <array>
+
+/**
+ * Defined message type for the system.
+ */
+enum class MessageType : uint8_t
 {
     grant_token,
     return_token,
     master_started,
     master_ended,
     send_packet,
-    send_tun_packet,
     mac_update,
-    lookup_address,
-    address_data
 };
+
+inline gsl::byte
+messageType2Byte(MessageType msgType)
+{
+    return gsl::to_byte(static_cast<uint8_t>(msgType));
+}
+
+inline MessageType
+byte2MessageType(gsl::byte b)
+{
+    return static_cast<MessageType>(b);
+}
 
 /**
  * Address allocations:
  * 1 byte address between 0-255.
  * Address:
- * 0 : unallocated node, invalid address.
- * 1 : master node.
- * 2-254 allocated slots.
+ * 0 : unallocated node, master, invalid address.
+ * 1-254 possible client addresses.
  * 255 broadcast.
  */
+enum class LocalAddress : uint8_t
+{
+    null_addr = 0,
+    broadcast = 0xff
+};
+
+inline gsl::byte
+localAddress2Byte(LocalAddress local)
+{
+    return gsl::to_byte(static_cast<uint8_t>(local));
+}
+
+inline std::ostream&
+operator<<(std::ostream& os, LocalAddress addr)
+{
+    os << static_cast<int>(addr);
+    return os;
+}
+
+inline LocalAddress
+toLocalAddress(gsl::byte byte)
+{
+    return static_cast<LocalAddress>(byte);
+}
 
 /**
- * Packet frame layout. Indicate offset into binary packet.
+ * Protocol structures describing packet headers. Note:
+ * Each element _must_ be of a Type where sizeof(Type)==1.
+ * or arrays of Type.
+ * This will guarantee that no padding is inserted.
  */
-// Grant token packet.
-enum class FrameGrantToken
+namespace packet
 {
-    msg_type,
-    token_receiver, // Address of client who gets the token.
-    max_num
+
+template <typename HeaderType>
+inline HeaderType*
+toHeader(gsl::byte* b)
+{
+    return static_cast<HeaderType*>(static_cast<void*>(b));
+}
+
+struct GrantToken
+{
+    MessageType m_type;
+    LocalAddress m_tokenReceiver;
 };
 
-enum class FrameReturnToken
+struct ReturnToken
 {
-    msg_type,
-    max_num // Size of the packet.
+    MessageType m_type;
+    LocalAddress m_src;
 };
 
-//
-enum class FrameSendPacket
+struct MasterStarted
 {
-    msg_type,
-    dest_addr,  // Where the packet should go.
-    token_hint, // Hint to master where the client suggest whom should have the
-                // token next.
-    packet_data // Where the actual data begins. Continues until the end of the
-                // packet.
+    MessageType m_type;
 };
+
+struct MasterEnded
+{
+    MessageType m_type;
+};
+
+struct SendPacket
+{
+    MessageType m_type;
+    LocalAddress m_destAddr;
+    LocalAddress m_srcAddr;
+};
+
+struct MacUpdate
+{
+    MessageType m_type;
+    LocalAddress m_destAddr;
+    LocalAddress m_srcAddr;
+    LocalAddress m_hintAddr;
+    std::array<gsl::byte, 6> m_mac;
+};
+}
 
 #endif /* SRC_INTERFACES_SERIALPROTOCOL_H_ */

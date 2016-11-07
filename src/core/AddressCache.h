@@ -24,6 +24,7 @@
 
 #include <gsl/gsl_byte>
 
+#include "interfaces/SerialProtocol.h"
 #include <array>
 #include <memory>
 #include <utility>
@@ -45,19 +46,19 @@ class AddressCache
      * @param addr MAC address.
      * @return Local address, -1 if not found.
      */
-    int getLocalAddress(const MacAddr& addr);
+    LocalAddress getLocalAddress(const MacAddr& addr);
 
-    void setAddress(int local, const MacAddr& mac);
+    void setAddress(LocalAddress local, const MacAddr& mac);
 
-    void updateMyMAC(int local, const MacAddr& mac);
+    void updateMyMAC(LocalAddress local, const MacAddr& mac);
 
-    std::pair<bool, MacAddr> getMac(int local);
+    std::pair<bool, MacAddr> getMac(LocalAddress local);
 
   private:
-    using Entry = std::pair<int, MacAddr>;
+    using Entry = std::pair<LocalAddress, MacAddr>;
     std::vector<Entry> m_table;
     MacAddr m_myMac;
-    int m_myLocalAddr = -1;
+    LocalAddress m_myLocalAddr = LocalAddress::null_addr;
     PacketTypeCodec* m_ptCodec = nullptr;
 };
 

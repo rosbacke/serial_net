@@ -31,7 +31,7 @@
 using std::array;
 using namespace gsl;
 
-SocatTapHostDriver::SocatTapHostDriver(int myAddr, AddressCache* ac,
+SocatTapHostDriver::SocatTapHostDriver(LocalAddress myAddr, AddressCache* ac,
                                        PosixFileIf* pfi)
     : m_tap(myAddr, ac, pfi)
 {

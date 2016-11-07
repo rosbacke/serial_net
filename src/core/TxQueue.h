@@ -38,7 +38,7 @@
 class TxQueue : public MsgHostIf::TxIf, public MasterTxIf
 {
   public:
-    TxQueue(MsgEtherIf* msgEtherIf, int ownAddr)
+    TxQueue(MsgEtherIf* msgEtherIf, LocalAddress ownAddr)
         : m_msgEtherIf(msgEtherIf), m_ownAddress(ownAddr)
     {
     }
@@ -46,14 +46,15 @@ class TxQueue : public MsgHostIf::TxIf, public MasterTxIf
     {
     }
 
-    void sendPacket(const MsgHostIf::HostPkt& data, int address);
+    void sendPacket(const MsgHostIf::HostPkt& data, LocalAddress address);
 
     // Implement MsgHostIf::TxIf interface.
     virtual void msgHostTx_sendPacket(const MsgHostIf::HostPkt& data,
-                                      int srcAddr, int destAddr) override;
+                                      LocalAddress srcAddr,
+                                      LocalAddress destAddr) override;
 
     virtual void
-    msgHostTx_sendAddressUpdate(int address,
+    msgHostTx_sendAddressUpdate(LocalAddress address,
                                 std::array<gsl::byte, 6> mac) override;
 
     // Called by the master to send a packet. Contain everything except the
@@ -69,7 +70,7 @@ class TxQueue : public MsgHostIf::TxIf, public MasterTxIf
 
     std::deque<ByteVec> m_txMsg;
     MsgEtherIf* m_msgEtherIf = nullptr;
-    int m_ownAddress;
+    LocalAddress m_ownAddress;
 };
 
 #endif /* SRC_CORE_TXQUEUE_H_ */

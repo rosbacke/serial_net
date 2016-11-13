@@ -16,26 +16,40 @@
  */
 
 /*
- * ProgramVersion.cpp
+ * Event.h
  *
- *  Created on: 13 aug. 2016
+ *  Created on: 12 nov. 2016
  *      Author: mikaelr
  */
 
-#include "ProgramVersion.h"
+#ifndef SRC_MASTER_EVENT_H_
+#define SRC_MASTER_EVENT_H_
 
-#include "utility/version_string.h"
+#include <string>
 
-ProgramVersion::ProgramVersion()
+class Event
 {
-}
+  public:
+    enum class Id
+    {
+        entry,
+        exit,
+        init,
+        rx_grant_token,
+        rx_client_packet,
+        rx_return_token,
+        timer_timeout
+    };
 
-ProgramVersion::~ProgramVersion()
-{
-}
+    Event(Id id) : m_id(id)
+    {
+    }
+    Event();
+    ~Event();
 
-std::string
-ProgramVersion::getVersionString()
-{
-    return std::string(VERSION_STRING);
-}
+    static std::string toString(Id id);
+
+    Id m_id;
+};
+
+#endif /* SRC_MASTER_EVENT_H_ */

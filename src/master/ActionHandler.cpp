@@ -22,10 +22,13 @@
  *      Author: mikaelr
  */
 
-#include "Addresses.h"
+#include "ActionHandler.h"
 
-Addresses::Addresses(int minAddr, int maxAddr, React::Loop& loop, Config* cfg)
-    : m_minAddr(minAddr), m_maxAddr(maxAddr), m_loop(loop), m_config(cfg)
+#include "MasterScheduler.h"
+
+ActionHandler::ActionHandler(React::Loop& loop, Config* cfg)
+    : m_minAddr(cfg->masterLowAddress()), m_maxAddr(cfg->masterHighAddress()),
+      m_loop(loop), m_config(cfg)
 {
     using State = AddressLine::State;
 
@@ -34,16 +37,18 @@ Addresses::Addresses(int minAddr, int maxAddr, React::Loop& loop, Config* cfg)
     for (int i = m_minAddr; i <= m_maxAddr; ++i)
     {
         m_table[i].setInit(State::active);
-        m_ready.push(QueueEl(static_cast<LocalAddress>(i), now));
+        m_scheduler.addAction(
+            Action::makeSendTokenAction(static_cast<LocalAddress>(i)), now);
     }
+    m_scheduler.addAction(Action::makeQueryAddressAction(), now);
 }
 
-Addresses::~Addresses()
+ActionHandler::~ActionHandler()
 {
 }
 
 double
-Addresses::nextTime(AddressLine::State state)
+ActionHandler::nextTime(AddressLine::State state)
 {
     using State = AddressLine::State;
     auto now = m_loop.now();
@@ -62,7 +67,7 @@ Addresses::nextTime(AddressLine::State state)
 }
 
 AddressLine*
-Addresses::find(LocalAddress address)
+ActionHandler::find(LocalAddress address)
 {
     auto offset = static_cast<int>(address) - m_minAddr;
     if (offset < static_cast<int>(m_table.size()) && offset >= 0)
@@ -76,60 +81,61 @@ Addresses::find(LocalAddress address)
 }
 
 void
-Addresses::gotReturnToken()
+ActionHandler::updateAddressLine(AddressLine::State newState)
 {
-    auto addr = m_ready.top().m_address;
+    auto addr = m_scheduler.active().m_action.m_address;
 
     auto line = find(addr);
-    line->setState(AddressLine::State::idle);
+    line->setState(newState);
 
     if (m_frontInProgress)
     {
-        m_ready.pop();
+        m_scheduler.pop();
         m_frontInProgress = false;
-        m_ready.push(QueueEl(addr, nextTime(line->getState())));
+        m_scheduler.addAction(Action::makeSendTokenAction(addr),
+                              nextTime(line->getState()));
     }
 }
 
 void
-Addresses::tokenTimeout()
+ActionHandler::gotReturnToken()
 {
-    auto addr = m_ready.top().m_address;
-    auto line = find(addr);
-    line->setState(AddressLine::State::badClient);
-
-    if (m_frontInProgress)
-    {
-        m_ready.pop();
-        m_frontInProgress = false;
-        m_ready.push(QueueEl(addr, nextTime(line->getState())));
-    }
+    updateAddressLine(AddressLine::State::idle);
 }
 
 void
-Addresses::packetStarted()
+ActionHandler::tokenTimeout()
 {
-    auto addr = m_ready.top().m_address;
-    auto line = find(addr);
-    line->setState(AddressLine::State::active);
+    updateAddressLine(AddressLine::State::badClient);
+}
 
+void
+ActionHandler::packetStarted()
+{
+    updateAddressLine(AddressLine::State::active);
+}
+
+void
+ActionHandler::addressQueryDone()
+{
     if (m_frontInProgress)
     {
-        m_ready.pop();
+        m_scheduler.pop();
         m_frontInProgress = false;
-        m_ready.push(QueueEl(addr, nextTime(line->getState())));
+        auto nextTime = m_loop.now() + m_config->addrQueryPeriod();
+        m_scheduler.addAction(Action::makeQueryAddressAction(), nextTime);
     }
 }
 
-Addresses::Action
-Addresses::nextAction()
+Action
+ActionHandler::nextAction()
 {
     auto now = m_loop.now();
-    const QueueEl& a = m_ready.top();
+    auto& a = m_scheduler.active();
     if (a.m_nextTime <= now)
     {
         m_frontInProgress = true;
-        return Action::makeSendTokenAction(a.m_address);
+        return a.m_action;
     }
     else
     {
@@ -138,15 +144,17 @@ Addresses::nextAction()
 }
 
 std::string
-toString(Addresses::Action::State state)
+toString(Action::Cmd state)
 {
-    using State = Addresses::Action::State;
+    using State = Action::Cmd;
     switch (state)
     {
     case State::delay:
         return "delay";
     case State::send_token:
         return "send_token";
+    case State::query_address:
+        return "query_address";
     }
     return "error";
 }

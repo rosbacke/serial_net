@@ -41,11 +41,6 @@ inline constexpr std::ptrdiff_t operator"" _ssz(unsigned long long int x)
     return x;
 }
 
-namespace gsl
-{
-using namespace gsl;
-}
-
 using ByteVec = std::vector<gsl::byte>;
 
 class Utility

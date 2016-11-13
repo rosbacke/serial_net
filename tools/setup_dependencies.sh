@@ -7,7 +7,7 @@ SCRIPT=$(readlink -f $0)
 GIT_ROOT_PATH=`dirname ${SCRIPT}`/..
 
 sudo apt-get update
-sudo apt-get install cmake ninja-build make libboost-all-dev libconfig++-dev git git-gui gitk socat libev-dev libc-ares-dev
+sudo apt-get install cmake ninja-build make libboost-all-dev libconfig++-dev git git-gui gitk socat libev-dev libc-ares-dev daemon
 
 # Get and build REACT-CPP
 CURR_PWD=`pwd`

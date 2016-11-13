@@ -47,22 +47,26 @@ TxQueue::sendPacket(const MsgHostIf::HostPkt& data, LocalAddress address)
     m_txMsg.push_back(packet);
 }
 
-bool
-TxQueue::sendClientPacket(bool useReturnToken)
+void
+TxQueue::sendClientPacketOrReturnToken()
 {
     if (m_txMsg.empty())
     {
-        if (useReturnToken)
-        {
-            sendReturnToken();
-        }
-        LOG_DEBUG << "Nothing to send from own client.";
-        return false;
+        sendReturnToken();
+        LOG_DEBUG << "Send return token. tx queue empty.";
     }
+    else
+    {
+        sendClientPacket();
+    }
+}
+
+void
+TxQueue::sendClientPacket()
+{
     auto packet = m_txMsg.front();
     m_msgEtherIf->sendMsg(packet);
     m_txMsg.pop_front();
-    return true;
 }
 
 void

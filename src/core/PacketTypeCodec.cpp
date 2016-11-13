@@ -44,28 +44,23 @@ longEnough(const MsgEtherIf::EtherPkt& packet)
         LOG_WARN << "Packet less than 1 byte.";
         return false;
     }
-    const auto cmd = byte2MessageType(packet[0]);
+    auto cmd = byte2MessageType(packet[0]);
 
-    using Entry = std::pair<MessageType, std::size_t>;
-    static const Entry minLength[] = {
-        {MessageType::grant_token, sizeof(packet::GrantToken)},
-        {MessageType::return_token, sizeof(packet::ReturnToken)},
-        {MessageType::master_started, sizeof(packet::MasterStarted)},
-        {MessageType::master_ended, sizeof(packet::MasterEnded)},
-        {MessageType::send_packet, sizeof(packet::SendPacket)},
-        {MessageType::mac_update, sizeof(packet::MacUpdate)}};
-
-    const auto end = minLength + ARRAY_SIZE(minLength);
-    const auto iter = std::find_if(
-        minLength, end, [cmd](const Entry& el) { return cmd == el.first; });
-    if (iter == end)
+#define CHECK_LEN(c, t)  \
+    case MessageType::c: \
+        return size >= sizeof(packet::t)
+    switch (cmd)
     {
-        LOG_WARN << "Unknown cmd type." << static_cast<int>(cmd);
-        return false;
+        CHECK_LEN(grant_token, GrantToken);
+        CHECK_LEN(return_token, ReturnToken);
+        CHECK_LEN(master_started, MasterStarted);
+        CHECK_LEN(master_ended, MasterEnded);
+        CHECK_LEN(send_packet, SendPacket);
+        CHECK_LEN(mac_update, MacUpdate);
     }
-    const bool ret = size >= iter->second;
-    LOG_TRACE << "packet len check status: " << ret;
-    return ret;
+#undef CHECK_LEN
+    LOG_WARN << "Unknown cmd type." << static_cast<int>(cmd);
+    return false;
 }
 
 PacketTypeCodec::PacketTypeCodec(MsgEtherIf* msgEtherIf, TxQueue* tx,
@@ -91,7 +86,7 @@ PacketTypeCodec::rxRawPacket(const MsgEtherIf::EtherPkt& bb)
         m_wsDump->rxPacket(bb);
     }
     const auto cmd = byte2MessageType(bb[0]);
-    LOG_TRACE << "Command: " << int(cmd) << " raw len: " << bb.size();
+    LOG_TRACE << "Command: " << cmd << " raw len: " << bb.size();
 
     switch (cmd)
     {
@@ -100,7 +95,7 @@ PacketTypeCodec::rxRawPacket(const MsgEtherIf::EtherPkt& bb)
         const LocalAddress msgOwnAddr = toLocalAddress(bb[1]);
         if (msgOwnAddr == m_ownAddress && m_txQueue)
         {
-            m_txQueue->sendClientPacket(true);
+            m_txQueue->sendClientPacketOrReturnToken();
         }
         break;
     }

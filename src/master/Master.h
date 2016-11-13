@@ -25,10 +25,15 @@
 #ifndef SRC_CORE_MASTER_H_
 #define SRC_CORE_MASTER_H_
 
-#include "Addresses.h"
+#include "MasterFSM.h"
+#include "MasterScheduler.h"
+#include "MasterUtils.h"
 #include "core/PacketTypeCodec.h"
 
+#include "ActionHandler.h"
 #include <reactcpp.h>
+
+#include "Event.h"
 
 class Config;
 
@@ -41,80 +46,11 @@ class Master : MasterRxIf::RxIf
     Master(React::Loop& loop, MasterRxIf* mr, MasterTxIf* mt,
            LocalAddress ownClientAddress, Config* cfg);
 
-    virtual ~Master();
-
-    // void packetReceived(const std::vector<uint8_t>& data);
-
-    // General 'doProcessing' call to be called whenever something
-    // needs to be done.
-    void execute();
+    ~Master();
 
     void exitMaster();
 
-    class Event
-    {
-      public:
-        enum class Id
-        {
-            entry,
-            exit,
-            init,
-            rx_grant_token,
-            rx_client_packet,
-            rx_return_token,
-            token_timeout
-        };
-        static std::string toString(Id id);
-    };
-
     using EvId = Event::Id;
-
-    typedef bool (*StateFkn)(Master& self, const EvId& ev);
-
-    static std::string toString(StateFkn fkn);
-
-  private:
-    // Helper function to set up a timeout, including protection against
-    // callbacks after master destruction.
-    void makeTimeout(double time);
-
-    void makeTimeoutAbs(double timeout);
-
-    void cleanTimeout();
-
-    struct State
-    {
-        Master::StateFkn m_fkn;
-        const char* m_str;
-    };
-
-    static std::vector<State> m_states;
-
-    // Startup state.
-    static bool initState(Master& me, const EvId& ev);
-
-    // Master has the token. No client is allowed on the line.
-    static bool idleState(Master& me, const EvId& ev);
-
-    // transition state. Try to send the token to the next.
-    static bool sendNextTokenState(Master& me, const EvId& ev);
-
-    // Token is being transmitted to client.
-    static bool sendingState(Master& me, const EvId& ev);
-
-    // Token is sent. Waiting for client to start sending.
-    static bool sentState(Master& me, const EvId& ev);
-
-    // Client is sending a packet.
-    static bool receivingState(Master& me, const EvId& ev);
-
-    void transition(StateFkn fkn)
-    {
-        m_nextState = fkn;
-    }
-
-    void stateProcess(const EvId& ev);
-    void tokenTimeout();
 
     // Implement reception of packets.
     virtual void
@@ -125,34 +61,17 @@ class Master : MasterRxIf::RxIf
     void sendToken(LocalAddress destAddr);
     void sendMasterStartStop(bool stop);
 
-    void postEvent(EvId event);
-
-    void emitEvent(const EvId& ev);
-
     React::Loop& m_loop;
 
     MasterRxIf* m_masterRx;
     MasterTxIf* m_masterTx;
 
-    std::shared_ptr<React::TimeoutWatcher> m_tokenTimeout;
-
-    int m_nextToken;
-
-    StateFkn m_state;
-    StateFkn m_nextState;
-
     LocalAddress m_ownClientAddress;
-    std::deque<EvId> m_events;
-
-    // Helper for delayed callback. Will derive a weak ptr to this
-    // that is handed out to e.g. external timers etc.
-    // If *this is deleted when callback happens, weak_ptr return nullptr.
-    std::shared_ptr<void*> m_timeoutHelper;
 
     Config* m_config;
 
-    bool m_anyPacketSent = false;
-    Addresses m_addresses;
+    ActionHandler m_addresses;
+    MasterFSM m_fsm;
 };
 
 #endif /* SRC_CORE_MASTER_H_ */

@@ -55,7 +55,7 @@ TapHostDriver::~TapHostDriver()
 }
 
 int
-TapHostDriver::tun_alloc(char* dev, unsigned tunFlags)
+TapHostDriver::tun_alloc(std::string& dev, unsigned tunFlags)
 {
     struct ifreq ifr;
     int fd, err;
@@ -75,8 +75,7 @@ TapHostDriver::tun_alloc(char* dev, unsigned tunFlags)
      *        IFF_NO_PI - Do not provide packet information
      */
     ifr.ifr_flags = tunFlags;
-    if (*dev)
-        ::strncpy(ifr.ifr_name, dev, IFNAMSIZ);
+    ::strncpy(ifr.ifr_name, dev.c_str(), IFNAMSIZ);
 
     if ((err = m_ptti->ioctl_TUNSETIFF(fd, (void*)&ifr)) < 0)
     {
@@ -84,7 +83,7 @@ TapHostDriver::tun_alloc(char* dev, unsigned tunFlags)
         m_pfi->close(fd);
         return err;
     }
-    ::strcpy(dev, ifr.ifr_name);
+    dev = std::string(ifr.ifr_name);
     LOG_DEBUG << "tun_alloc success : fd " << fd;
 
     return fd;
@@ -101,10 +100,8 @@ TapHostDriver::startTransfer(MsgHostIf::TxIf* txIf, React::Loop& loop)
 void
 TapHostDriver::setupCallback(React::Loop& mainLoop)
 {
-    char tun_name[IFNAMSIZ];
+    std::string tun_name("tap0");
 
-    /* Connect to the device */
-    strcpy(tun_name, "tap0");
     m_tun_fd.set(tun_alloc(tun_name, IFF_TAP)); /* tap interface */
 
     if (m_tun_fd < 0)

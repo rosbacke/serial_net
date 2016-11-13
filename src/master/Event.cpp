@@ -16,26 +16,40 @@
  */
 
 /*
- * ProgramVersion.cpp
+ * Event.cpp
  *
- *  Created on: 13 aug. 2016
+ *  Created on: 12 nov. 2016
  *      Author: mikaelr
  */
 
-#include "ProgramVersion.h"
+#include "Event.h"
 
-#include "utility/version_string.h"
-
-ProgramVersion::ProgramVersion()
+Event::Event()
 {
+    // TODO Auto-generated constructor stub
 }
 
-ProgramVersion::~ProgramVersion()
+Event::~Event()
 {
+    // TODO Auto-generated destructor stub
 }
 
 std::string
-ProgramVersion::getVersionString()
+Event::toString(Id id)
 {
-    return std::string(VERSION_STRING);
+#define CASE(x) \
+    case Id::x: \
+        return #x
+
+    switch (id)
+    {
+        CASE(entry);
+        CASE(exit);
+        CASE(init);
+        CASE(rx_grant_token);
+        CASE(rx_client_packet);
+        CASE(rx_return_token);
+        CASE(timer_timeout);
+    }
+    return "";
 }

@@ -40,8 +40,11 @@ class MasterTxIf
     // frame layer.
     virtual void sendMasterPacket(const ByteVec& packet) = 0;
 
+    // Return true if there are no packets queued for transmission.
+    virtual bool txQueueEmpty() const = 0;
+
     // When the own client can send a packet. return true if packet was sent.
-    virtual bool sendClientPacket(bool useReturnToken) = 0;
+    virtual void sendClientPacket() = 0;
 
     virtual ~MasterTxIf(){};
 };

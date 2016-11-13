@@ -74,7 +74,7 @@ class Config
      */
     double masterTokenGrantTx2RxTime() const
     {
-        return 0.01;
+        return 0.1;
     }
 
     /**
@@ -121,6 +121,15 @@ class Config
     double addrDelayTokenReturn() const
     {
         return 0.1; // A bit longer. Focus on the ones currently sending.
+    }
+
+    /**
+     * What is the period time between address query attempts?
+     */
+    double addrQueryPeriod() const
+    {
+        return 5.0; // A bit longer. Shouldn't be new units during normal
+                    // operration.
     }
 
     static Config& instance();

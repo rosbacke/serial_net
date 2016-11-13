@@ -60,7 +60,7 @@ class TapHostDriver : public MsgHostIf
     }
 
   private:
-    int tun_alloc(char* dev, unsigned tunFlags);
+    int tun_alloc(std::string& dev, unsigned tunFlags);
 
     void setupCallback(React::Loop& mainLoop);
     TapProtocol m_tap;

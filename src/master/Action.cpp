@@ -16,26 +16,10 @@
  */
 
 /*
- * ProgramVersion.cpp
+ * Action.cpp
  *
- *  Created on: 13 aug. 2016
+ *  Created on: 13 nov. 2016
  *      Author: mikaelr
  */
 
-#include "ProgramVersion.h"
-
-#include "utility/version_string.h"
-
-ProgramVersion::ProgramVersion()
-{
-}
-
-ProgramVersion::~ProgramVersion()
-{
-}
-
-std::string
-ProgramVersion::getVersionString()
-{
-    return std::string(VERSION_STRING);
-}
+#include "Action.h"

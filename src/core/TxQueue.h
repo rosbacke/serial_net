@@ -62,7 +62,16 @@ class TxQueue : public MsgHostIf::TxIf, public MasterTxIf
     virtual void sendMasterPacket(const ByteVec& packet) override;
 
     // Own client can send a packet.
-    virtual bool sendClientPacket(bool useReturnToken) override;
+    virtual void sendClientPacket() override;
+
+    // Return true if the Tx queue is empty.
+    virtual bool txQueueEmpty() const override
+    {
+        return m_txMsg.empty();
+    }
+
+    // Send either a client packet or a return token.
+    void sendClientPacketOrReturnToken();
 
   private:
     // Inform the master that we do not have a packet to send.

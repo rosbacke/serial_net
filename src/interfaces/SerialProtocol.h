@@ -53,6 +53,12 @@ byte2MessageType(gsl::byte b)
     return static_cast<MessageType>(b);
 }
 
+inline std::ostream&
+operator<<(std::ostream& os, MessageType msgType)
+{
+    return os << static_cast<int>(msgType);
+}
+
 /**
  * Address allocations:
  * 1 byte address between 0-255.

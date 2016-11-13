@@ -16,26 +16,20 @@
  */
 
 /*
- * ProgramVersion.cpp
+ * MasterScheduler.cpp
  *
- *  Created on: 13 aug. 2016
+ *  Created on: 9 nov. 2016
  *      Author: mikaelr
  */
 
-#include "ProgramVersion.h"
+#include "MasterScheduler.h"
 
-#include "utility/version_string.h"
-
-ProgramVersion::ProgramVersion()
+MasterScheduler::MasterScheduler()
 {
+    // TODO Auto-generated constructor stub
 }
 
-ProgramVersion::~ProgramVersion()
+MasterScheduler::~MasterScheduler()
 {
-}
-
-std::string
-ProgramVersion::getVersionString()
-{
-    return std::string(VERSION_STRING);
+    // TODO Auto-generated destructor stub
 }

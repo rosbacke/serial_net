@@ -46,6 +46,10 @@ class MsgEtherIf
             : gsl::span<const gsl::byte>(start, length)
         {
         }
+        explicit EtherPkt(const ByteVec& bv)
+            : gsl::span<const gsl::byte>(bv.data(), bv.size())
+        {
+        }
     };
 
     /**
@@ -61,7 +65,7 @@ class MsgEtherIf
     virtual ~MsgEtherIf();
 
     // Send a message to the ether.
-    virtual void sendMsg(const ByteVec& msg) = 0;
+    virtual void sendMsg(const EtherPkt& msg) = 0;
 
     // Register a receiver.
     virtual void addClient(RxIf* cb) = 0;

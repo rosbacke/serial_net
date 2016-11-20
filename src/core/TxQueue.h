@@ -35,7 +35,7 @@
 /**
  * Responsible for sending packets to the network.
  */
-class TxQueue : public MsgHostIf::TxIf, public MasterTxIf
+class TxQueue : public MsgHostIf, public MasterTxIf
 {
   public:
     TxQueue(MsgEtherIf* msgEtherIf, LocalAddress ownAddr)
@@ -59,7 +59,7 @@ class TxQueue : public MsgHostIf::TxIf, public MasterTxIf
 
     // Called by the master to send a packet. Contain everything except the
     // frame layer.
-    virtual void sendMasterPacket(const ByteVec& packet) override;
+    virtual void sendMasterPacket(const MsgEtherIf::EtherPkt& packet) override;
 
     // Own client can send a packet.
     virtual void sendClientPacket() override;
@@ -73,13 +73,24 @@ class TxQueue : public MsgHostIf::TxIf, public MasterTxIf
     // Send either a client packet or a return token.
     void sendClientPacketOrReturnToken();
 
+    virtual void setRxHandler(RxIf* rxIf)
+    {
+        m_rxIf = rxIf;
+    }
+
+    MsgHostIf::RxIf* getRxIf() const
+    {
+        return m_rxIf;
+    }
+
   private:
     // Inform the master that we do not have a packet to send.
     void sendReturnToken();
 
     std::deque<ByteVec> m_txMsg;
     MsgEtherIf* m_msgEtherIf = nullptr;
-    LocalAddress m_ownAddress;
+    LocalAddress m_ownAddress = LocalAddress::null_addr;
+    MsgHostIf::RxIf* m_rxIf = nullptr;
 };
 
 #endif /* SRC_CORE_TXQUEUE_H_ */

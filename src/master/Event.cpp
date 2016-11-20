@@ -50,6 +50,7 @@ Event::toString(Id id)
         CASE(rx_client_packet);
         CASE(rx_return_token);
         CASE(timer_timeout);
+        CASE(rx_address_request);
     }
     return "";
 }

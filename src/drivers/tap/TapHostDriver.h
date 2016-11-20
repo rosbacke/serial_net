@@ -33,14 +33,14 @@
 class PosixFileIf;
 class PosixTunTapIf;
 
-class TapHostDriver : public MsgHostIf
+class TapHostDriver : public MsgHostIf::RxIf
 {
   public:
     TapHostDriver(LocalAddress myAddr, AddressCache* ac, PosixFileIf* pfi,
                   PosixTunTapIf* ptti);
     virtual ~TapHostDriver();
 
-    void startTransfer(MsgHostIf::TxIf* txIf, React::Loop& loop);
+    void startTransfer(MsgHostIf* txIf, React::Loop& loop);
 
     /**
      * Called when a packet was received from the serial net.
@@ -49,14 +49,6 @@ class TapHostDriver : public MsgHostIf
                                 LocalAddress destAddr) override
     {
         m_tap.packetReceived(m_tun_fd, data, srcAddr, destAddr);
-    }
-
-    /**
-     * Inform the driver where it is supposed to send its packets.
-     */
-    virtual void setTxHandler(TxIf* txIf) override
-    {
-        m_tap.setTx(txIf);
     }
 
   private:

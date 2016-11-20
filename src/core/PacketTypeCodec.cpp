@@ -57,6 +57,9 @@ longEnough(const MsgEtherIf::EtherPkt& packet)
         CHECK_LEN(master_ended, MasterEnded);
         CHECK_LEN(send_packet, SendPacket);
         CHECK_LEN(mac_update, MacUpdate);
+        CHECK_LEN(address_discovery, AddressDiscovery);
+        CHECK_LEN(address_request, AddressRequest);
+        CHECK_LEN(address_reply, AddressReply);
     }
 #undef CHECK_LEN
     LOG_WARN << "Unknown cmd type." << static_cast<int>(cmd);
@@ -65,8 +68,8 @@ longEnough(const MsgEtherIf::EtherPkt& packet)
 
 PacketTypeCodec::PacketTypeCodec(MsgEtherIf* msgEtherIf, TxQueue* tx,
                                  LocalAddress ownAddress)
-    : m_msgEtherIf(msgEtherIf), m_msgHostIf(nullptr), m_txQueue(tx),
-      m_master(nullptr), m_wsDump(nullptr), m_ownAddress(ownAddress)
+    : m_msgEtherIf(msgEtherIf), m_txQueue(tx), m_master(nullptr),
+      m_wsDump(nullptr), m_ownAddress(ownAddress), m_clientAddress(m_txQueue)
 {
 }
 
@@ -92,19 +95,21 @@ PacketTypeCodec::rxRawPacket(const MsgEtherIf::EtherPkt& bb)
     {
     case MessageType::grant_token:
     {
-        const LocalAddress msgOwnAddr = toLocalAddress(bb[1]);
+        auto p = packet::toHeader<packet::GrantToken>(bb);
+        const LocalAddress msgOwnAddr = p->m_tokenReceiver;
         if (msgOwnAddr == m_ownAddress && m_txQueue)
         {
+            m_clientAddress.rxToken(*p);
             m_txQueue->sendClientPacketOrReturnToken();
         }
         break;
     }
     case MessageType::send_packet:
     {
-        assert(bb.size() >= 3);
-        const LocalAddress destAddr = toLocalAddress(bb[1]);
-        // uint8_t srcAddr = bb[2];
-        if (destAddr == m_ownAddress ||
+        auto p = packet::toHeader<packet::GrantToken>(bb);
+        const LocalAddress destAddr = p->m_tokenReceiver;
+        if ((destAddr == m_ownAddress &&
+             m_ownAddress != LocalAddress::null_addr) ||
             m_ownAddress == LocalAddress::broadcast ||
             destAddr == LocalAddress::broadcast)
         {
@@ -113,8 +118,24 @@ PacketTypeCodec::rxRawPacket(const MsgEtherIf::EtherPkt& bb)
         }
         break;
     }
+    case MessageType::address_discovery:
+    {
+        auto p = packet::toHeader<packet::AddressDiscovery>(bb);
+        m_clientAddress.rxDiscoveryPacket(*p);
+        break;
+    }
+    case MessageType::address_request:
+        break;
+
+    case MessageType::address_reply:
+    {
+        auto p = packet::toHeader<packet::AddressReply>(bb);
+        m_clientAddress.rxAddrReplyPacket(*p);
+        break;
+    }
     case MessageType::return_token:
         break;
+
     case MessageType::master_started:
         break;
     case MessageType::master_ended:
@@ -136,9 +157,6 @@ PacketTypeCodec::rxRawPacket(const MsgEtherIf::EtherPkt& bb)
         }
         break;
     }
-
-    default:
-        break;
     }
     if (m_master)
     {
@@ -161,9 +179,10 @@ PacketTypeCodec::deliverRxQueue()
         auto destAddr = toLocalAddress(bb[1]);
         auto srcAddr = toLocalAddress(bb[2]);
         auto res = ByteVec(bb.begin() + headerSize, bb.end());
-        if (m_msgHostIf)
+        auto rxIf = m_txQueue->getRxIf();
+        if (rxIf)
         {
-            m_msgHostIf->packetReceived(res, srcAddr, destAddr);
+            rxIf->packetReceived(res, srcAddr, destAddr);
         }
         m_rxMsg.pop_front();
     }

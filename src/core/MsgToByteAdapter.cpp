@@ -35,7 +35,7 @@ MsgToByteAdapter::~MsgToByteAdapter()
 }
 
 void
-MsgToByteAdapter::sendMsg(const ByteVec& msg)
+MsgToByteAdapter::sendMsg(const EtherPkt& msg)
 {
     ByteVec raw;
     m_codec.encodePacket(msg, raw);

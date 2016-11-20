@@ -42,10 +42,11 @@ SocatTapHostDriver::~SocatTapHostDriver()
 }
 
 void
-SocatTapHostDriver::startTransfer(MsgHostIf::TxIf* txIf, React::Loop& loop)
+SocatTapHostDriver::startTransfer(MsgHostIf* txIf, React::Loop& loop)
 {
     m_tap.setTx(txIf);
     setupCallback(loop);
+    txIf->setRxHandler(this);
 }
 
 void

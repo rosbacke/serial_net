@@ -25,6 +25,7 @@
 #ifndef SRC_CORE_LOG_H_
 #define SRC_CORE_LOG_H_
 
+#include "gsl/gsl"
 #include <iostream>
 #include <sstream>
 
@@ -81,6 +82,13 @@ class LogLine
     std::stringstream m_ss;
     Log::Level m_level;
 };
+
+inline std::ostream&
+operator<<(std::ostream& os, gsl::byte b)
+{
+    os << int(b);
+    return os;
+}
 }
 
 #define LOG(x) LogLine(std::cerr, x)

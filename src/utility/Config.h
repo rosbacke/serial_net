@@ -132,6 +132,15 @@ class Config
                     // operration.
     }
 
+    /**
+     * What is the period time between address query attempts?
+     */
+    double addrDiscoveryTimeout() const
+    {
+        return 0.010; // A bit longer. Shouldn't be new units during normal
+                      // operration.
+    }
+
     static Config& instance();
 };
 

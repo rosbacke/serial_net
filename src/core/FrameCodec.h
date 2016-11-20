@@ -57,7 +57,7 @@ class FrameCodec
     /**
      * Encode a given packet with the frame format.
      */
-    void encodePacket(const ByteVec& data, ByteVec& result);
+    void encodePacket(const MsgEtherIf::EtherPkt& data, ByteVec& result);
 
     /**
      * Add bytes to be decoded.

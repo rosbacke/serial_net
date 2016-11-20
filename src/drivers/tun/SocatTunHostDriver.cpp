@@ -38,10 +38,11 @@ SocatTunHostDriver::~SocatTunHostDriver()
 }
 
 void
-SocatTunHostDriver::startTransfer(MsgHostIf::TxIf* txIf, React::Loop& loop)
+SocatTunHostDriver::startTransfer(MsgHostIf* txIf, React::Loop& loop)
 {
     m_txIf = txIf;
     setupCallback(loop);
+    txIf->setRxHandler(this);
 }
 
 namespace

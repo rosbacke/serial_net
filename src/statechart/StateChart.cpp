@@ -16,41 +16,10 @@
  */
 
 /*
- * Event.h
+ * StateChart.cpp
  *
  *  Created on: 12 nov. 2016
  *      Author: mikaelr
  */
 
-#ifndef SRC_MASTER_EVENT_H_
-#define SRC_MASTER_EVENT_H_
-
-#include <string>
-
-class Event
-{
-  public:
-    enum class Id
-    {
-        entry,
-        exit,
-        init,
-        rx_grant_token,
-        rx_client_packet,
-        rx_return_token,
-        rx_address_request,
-        timer_timeout
-    };
-
-    Event(Id id) : m_id(id)
-    {
-    }
-    Event();
-    ~Event();
-
-    static std::string toString(Id id);
-
-    Id m_id;
-};
-
-#endif /* SRC_MASTER_EVENT_H_ */
+#include "StateChart.h"

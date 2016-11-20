@@ -65,12 +65,13 @@ void
 TxQueue::sendClientPacket()
 {
     auto packet = m_txMsg.front();
-    m_msgEtherIf->sendMsg(packet);
+
+    m_msgEtherIf->sendMsg(MsgEtherIf::EtherPkt(packet));
     m_txMsg.pop_front();
 }
 
 void
-TxQueue::sendMasterPacket(const ByteVec& packet)
+TxQueue::sendMasterPacket(const MsgEtherIf::EtherPkt& packet)
 {
     m_msgEtherIf->sendMsg(packet);
 }
@@ -86,18 +87,20 @@ TxQueue::msgHostTx_sendPacket(const MsgHostIf::HostPkt& data,
 void
 TxQueue::sendReturnToken()
 {
-    ByteVec packet(2);
-    auto p = toHeader<packet::ReturnToken>(packet.data());
-
-    p->m_type = MessageType::return_token;
-    p->m_src = m_ownAddress;
-    m_msgEtherIf->sendMsg(packet);
+    packet::ReturnToken p;
+    p.m_type = MessageType::return_token;
+    p.m_src = m_ownAddress;
+    m_msgEtherIf->sendMsg(packet::fromHeader(p));
 }
 
 void
 TxQueue::msgHostTx_sendAddressUpdate(LocalAddress address,
                                      std::array<byte, 6> mac)
 {
+    if (m_ownAddress == LocalAddress::null_addr)
+    {
+        return;
+    }
     using PktType = packet::MacUpdate;
     auto headerSize = sizeof(PktType);
     ByteVec packet(headerSize);

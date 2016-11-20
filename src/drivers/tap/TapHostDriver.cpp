@@ -90,11 +90,12 @@ TapHostDriver::tun_alloc(std::string& dev, unsigned tunFlags)
 }
 
 void
-TapHostDriver::startTransfer(MsgHostIf::TxIf* txIf, React::Loop& loop)
+TapHostDriver::startTransfer(MsgHostIf* txIf, React::Loop& loop)
 {
     LOG_DEBUG << "startTransfer done";
     m_tap.setTx(txIf);
     setupCallback(loop);
+    txIf->setRxHandler(this);
 }
 
 void

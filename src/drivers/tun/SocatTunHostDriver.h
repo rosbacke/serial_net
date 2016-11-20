@@ -46,27 +46,19 @@ class PosixFileIf;
  * address to send to/receive from.
  *
  */
-class SocatTunHostDriver : public MsgHostIf
+class SocatTunHostDriver : public MsgHostIf::RxIf
 {
   public:
     SocatTunHostDriver(LocalAddress myAddr, PosixFileIf* pfi);
     virtual ~SocatTunHostDriver();
 
-    void startTransfer(MsgHostIf::TxIf* txIf, React::Loop& loop);
+    void startTransfer(MsgHostIf* txIf, React::Loop& loop);
 
     /**
      * Called when a packet was received from the serial net.
      */
     virtual void packetReceived(const ByteVec& data, LocalAddress srcAddr,
                                 LocalAddress destAddr) override;
-
-    /**
-     * Inform the driver where it is supposed to send its packets.
-     */
-    virtual void setTxHandler(TxIf* txIf) override
-    {
-        m_txIf = txIf;
-    }
 
   private:
     enum class ReadType
@@ -85,7 +77,7 @@ class SocatTunHostDriver : public MsgHostIf
     void doRead(int fileDescriptor);
 
     LocalAddress m_myAddr;
-    MsgHostIf::TxIf* m_txIf;
+    MsgHostIf* m_txIf;
 
     PosixFileIf* m_posixFileIf;
 };

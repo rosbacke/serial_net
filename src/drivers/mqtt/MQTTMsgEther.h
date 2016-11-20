@@ -45,7 +45,7 @@ class MQTTMsgEther : public MsgEtherIf
 
     /// Implement interface.
     // Send a message to the ether.
-    virtual void sendMsg(const ByteVec& msg) override;
+    virtual void sendMsg(const MsgEtherIf::EtherPkt& msg) override;
 
     // Register a receiver.
     virtual void addClient(MsgEtherIf::RxIf* cb) override;

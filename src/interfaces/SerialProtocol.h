@@ -28,6 +28,8 @@
 #include "gsl/gsl"
 #include <array>
 
+#include "MsgEtherIf.h"
+
 /**
  * Defined message type for the system.
  */
@@ -39,6 +41,9 @@ enum class MessageType : uint8_t
     master_ended,
     send_packet,
     mac_update,
+    address_discovery,
+    address_request,
+    address_reply
 };
 
 inline gsl::byte
@@ -100,12 +105,31 @@ toLocalAddress(gsl::byte byte)
  */
 namespace packet
 {
+using UniqueId = std::array<gsl::byte, 8>;
+using Crc32 = std::array<gsl::byte, 4>;
 
 template <typename HeaderType>
 inline HeaderType*
 toHeader(gsl::byte* b)
 {
     return static_cast<HeaderType*>(static_cast<void*>(b));
+}
+
+template <typename HeaderType>
+inline const HeaderType*
+toHeader(const MsgEtherIf::EtherPkt& p)
+{
+    return static_cast<const HeaderType*>(static_cast<const void*>(p.data()));
+}
+
+template <typename HeaderType>
+inline MsgEtherIf::EtherPkt
+fromHeader(const HeaderType& header)
+{
+    MsgEtherIf::EtherPkt ep(
+        static_cast<const gsl::byte*>(static_cast<const void*>(&header)),
+        sizeof(HeaderType));
+    return ep;
 }
 
 struct GrantToken
@@ -144,6 +168,27 @@ struct MacUpdate
     LocalAddress m_srcAddr;
     LocalAddress m_hintAddr;
     std::array<gsl::byte, 6> m_mac;
+};
+
+struct AddressDiscovery
+{
+    MessageType m_type;
+    uint8_t m_randomDelay; // Hold off answer randomly up to this amount of ms.
+    uint8_t m_randomHoldOff; // 0xff -> p = 1.0, 0 -> p = 0.0
+};
+
+struct AddressRequest
+{
+    MessageType m_type;
+    UniqueId m_uniqueId;
+    Crc32 m_crc32;
+};
+
+struct AddressReply
+{
+    MessageType m_type;
+    LocalAddress m_assigned;
+    UniqueId m_uniqueId;
 };
 }
 

@@ -89,9 +89,6 @@ class SerialNet
     // Interface to the lower level frame interface.
     MsgEtherIf* m_msgEther;
 
-    // Interface to the upper level host interface.
-    MsgHostIf* m_msgHost;
-
     // Configuration from file/various timing constants.
     Config m_config;
     React::MainLoop m_loop;

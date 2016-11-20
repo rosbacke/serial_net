@@ -48,33 +48,29 @@ class MsgHostIf
         }
     };
 
-    // Interface for sending packets over the network.
-    class TxIf
-    {
-      public:
-        // The core implements this function.
-        virtual void msgHostTx_sendPacket(const HostPkt& data,
-                                          LocalAddress srcAddr,
-                                          LocalAddress destAddr) = 0;
+    // The core implements this function.
+    virtual void msgHostTx_sendPacket(const HostPkt& data, LocalAddress srcAddr,
+                                      LocalAddress destAddr) = 0;
 
-        virtual void msgHostTx_sendAddressUpdate(LocalAddress address,
-                                                 std::array<gsl::byte, 6> mac)
-        {
-        }
-    };
+    virtual void msgHostTx_sendAddressUpdate(LocalAddress address,
+                                             std::array<gsl::byte, 6> mac) = 0;
 
     MsgHostIf(){};
 
-    /**
-     * Called when a packet was received from the serial net.
-     */
-    virtual void packetReceived(const ByteVec& data, LocalAddress srcAddr,
-                                LocalAddress destAddr) = 0;
+    class RxIf
+    {
+      public:
+        /**
+         * Called when a packet was received from the serial net.
+         */
+        virtual void packetReceived(const ByteVec& data, LocalAddress srcAddr,
+                                    LocalAddress destAddr) = 0;
+    };
 
     /**
      * Inform the driver where it is supposed to send its packets.
      */
-    virtual void setTxHandler(TxIf* txIf) = 0;
+    virtual void setRxHandler(RxIf* rxIf) = 0;
 
     virtual ~MsgHostIf(){};
 };

@@ -44,7 +44,7 @@ FrameCodec::~FrameCodec()
 }
 
 void
-FrameCodec::encodePacket(const ByteVec& data, ByteVec& result)
+FrameCodec::encodePacket(const MsgEtherIf::EtherPkt& data, ByteVec& result)
 {
     const std::size_t dataLen = data.size();
     auto checksum = to_byte<0>();

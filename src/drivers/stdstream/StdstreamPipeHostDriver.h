@@ -34,7 +34,7 @@
 
 class PosixFileIf;
 
-class StdstreamPipeHostDriver : public MsgHostIf
+class StdstreamPipeHostDriver : public MsgHostIf::RxIf
 {
   public:
     StdstreamPipeHostDriver(LocalAddress myAddr, PosixFileIf* posixIf);
@@ -42,7 +42,7 @@ class StdstreamPipeHostDriver : public MsgHostIf
 
     void startStdout(LocalAddress rxAddress);
 
-    void startStdin(LocalAddress destAddr, TxIf* txIf,
+    void startStdin(LocalAddress destAddr, MsgHostIf* txIf,
                     React::MainLoop& mainLoop);
 
     /**
@@ -52,11 +52,6 @@ class StdstreamPipeHostDriver : public MsgHostIf
                         LocalAddress destAddr) override;
 
   private:
-    virtual void setTxHandler(TxIf* txIf) override
-    {
-        m_txHandler = txIf;
-    }
-
     void setupCallback(React::MainLoop& mainLoop);
 
     // My address in the network.
@@ -69,7 +64,7 @@ class StdstreamPipeHostDriver : public MsgHostIf
     LocalAddress m_destAddr;
 
     // Where we send our packet for delivery to the ether.
-    MsgHostIf::TxIf* m_txHandler;
+    MsgHostIf* m_txHandler;
 
     // Interface for the posix filer operations.
     PosixFileIf* m_posixIf;

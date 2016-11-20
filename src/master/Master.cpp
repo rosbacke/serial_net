@@ -33,7 +33,7 @@
 using namespace std::string_literals;
 using namespace gsl;
 
-Master::Master(React::Loop& loop, MasterRxIf* mr, MasterTxIf* mt,
+Master::Master(React::Loop& loop, MasterPacketIf* mr, MasterTxIf* mt,
                LocalAddress ownClientAddress, Config* cfg)
     : m_loop(loop), m_masterRx(mr), m_masterTx(mt),
       m_ownClientAddress(ownClientAddress), m_config(cfg),
@@ -57,7 +57,7 @@ Master::~Master()
 void
 Master::exitMaster()
 {
-    sendMasterStartStop(true);
+    sendMasterStop();
 }
 
 void
@@ -84,6 +84,12 @@ Master::masterPacketReceived(MessageType type,
     case MessageType::mac_update:
         m_fsm.postEvent(EvId::rx_client_packet);
         break;
+
+    // TODO: Implement these.
+    case MessageType::address_discovery:
+    case MessageType::address_request:
+    case MessageType::address_reply:
+        break;
     }
 }
 
@@ -97,26 +103,31 @@ Master::sendToken(LocalAddress destAddr)
         reinterpret_cast<packet::GrantToken*>(packet.data());
     p->m_type = MessageType::grant_token;
     p->m_tokenReceiver = destAddr;
-    m_masterTx->sendMasterPacket(packet);
+    m_masterTx->sendMasterPacket(MsgEtherIf::EtherPkt(packet));
 }
 
 void
-Master::sendMasterStartStop(bool stop)
+Master::sendMasterStop()
 {
-    LOG_INFO << "Send master "s + (stop ? "stop"s : "start"s);
+    packet::MasterEnded p;
+    p.m_type = MessageType::master_ended;
+    m_masterTx->sendMasterPacket(packet::fromHeader(p));
+}
 
-    ByteVec packet;
-    if (stop)
-    {
-        packet.resize(sizeof(packet::MasterEnded));
-        auto* p = packet::toHeader<packet::MasterEnded>(packet.data());
-        p->m_type = MessageType::master_ended;
-    }
-    else
-    {
-        packet.resize(sizeof(packet::MasterStarted));
-        auto* p = packet::toHeader<packet::MasterStarted>(packet.data());
-        p->m_type = MessageType::master_started;
-    }
-    m_masterTx->sendMasterPacket(packet);
+void
+Master::sendMasterStart()
+{
+    packet::MasterStarted p;
+    p.m_type = MessageType::master_started;
+    m_masterTx->sendMasterPacket(packet::fromHeader(p));
+}
+
+void
+Master::sendAddressDiscovery()
+{
+    packet::AddressDiscovery p;
+    p.m_randomDelay = 0;
+    p.m_randomHoldOff = 0;
+    p.m_type = MessageType::address_discovery;
+    m_masterTx->sendMasterPacket(packet::fromHeader(p));
 }

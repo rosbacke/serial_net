@@ -49,7 +49,7 @@ class TapProtocol
     {
     }
 
-    void setTx(MsgHostIf::TxIf* txIf)
+    void setTx(MsgHostIf* txIf)
     {
         m_txIf = txIf;
     }
@@ -65,7 +65,7 @@ class TapProtocol
     void checkArp(const TapHeader* tap);
 
     LocalAddress m_myAddr = LocalAddress::null_addr;
-    MsgHostIf::TxIf* m_txIf = nullptr;
+    MsgHostIf* m_txIf = nullptr;
     AddressCache* m_cache = nullptr;
     PosixFileIf* m_posixFileIf;
 };

@@ -47,8 +47,7 @@
 #include "drivers/tun/SocatTunHostDriver.h"
 #include <drivers/tap/SocatTapHostDriver.h>
 
-SerialNet::SerialNet()
-    : m_mode(SNConfig::Mode::unknown), m_msgEther(nullptr), m_msgHost(nullptr)
+SerialNet::SerialNet() : m_mode(SNConfig::Mode::unknown), m_msgEther(nullptr)
 {
 }
 
@@ -140,14 +139,12 @@ SerialNet::start(boost::program_options::variables_map& vm)
         default:
             break;
         }
-        m_msgHost = m_stdHostStdstreamDriver.get();
     }
     else if (m_mode == SNConfig::Mode::socat_tun)
     {
         m_socatTunHostDriver =
             std::make_unique<SocatTunHostDriver>(myAddr, &m_posixFileIf);
         m_socatTunHostDriver->startTransfer(m_txQueue.get(), m_loop);
-        m_msgHost = m_socatTunHostDriver.get();
     }
     else if (m_mode == SNConfig::Mode::socat_tap)
     {
@@ -156,8 +153,6 @@ SerialNet::start(boost::program_options::variables_map& vm)
             myAddr, m_addressCache.get(), &m_posixFileIf);
         m_packetTypeCodec->setAddressCache(m_addressCache.get());
         m_socatTapHostDriver->startTransfer(m_txQueue.get(), m_loop);
-
-        m_msgHost = m_socatTapHostDriver.get();
     }
     else if (m_mode == SNConfig::Mode::tap)
     {
@@ -166,10 +161,7 @@ SerialNet::start(boost::program_options::variables_map& vm)
             myAddr, m_addressCache.get(), &m_posixFileIf, &m_posixTunTapIf);
         m_packetTypeCodec->setAddressCache(m_addressCache.get());
         m_tapHostDriver->startTransfer(m_txQueue.get(), m_loop);
-
-        m_msgHost = m_tapHostDriver.get();
     }
-    m_packetTypeCodec->setHostIf(m_msgHost);
     m_packetTypeCodec->setWsDump(m_wsDump.get());
 
     const bool startMaster = vm.count("master") > 0;

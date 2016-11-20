@@ -83,7 +83,7 @@ class VecQueue
         if (m_headPos == m_store.size())
         {
             m_headPos = 0;
-            m_store.resize(0);
+            m_store.clear();
         }
     }
 

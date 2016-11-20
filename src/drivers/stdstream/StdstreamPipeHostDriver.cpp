@@ -46,11 +46,11 @@ StdstreamPipeHostDriver::startStdout(LocalAddress rxAddress)
 }
 
 void
-StdstreamPipeHostDriver::startStdin(LocalAddress destAddr, TxIf* txIf,
+StdstreamPipeHostDriver::startStdin(LocalAddress destAddr, MsgHostIf* txIf,
                                     React::MainLoop& mainLoop)
 {
     m_destAddr = destAddr;
-    setTxHandler(txIf);
+    m_txHandler = txIf;
     setupCallback(mainLoop);
 }
 

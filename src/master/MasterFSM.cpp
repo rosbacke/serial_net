@@ -129,7 +129,7 @@ MasterFSM::initState(MasterFSM& me, const Event& event)
     switch (ev)
     {
     case EvId::entry:
-        me.m_master->sendMasterStartStop(false);
+        me.m_master->sendMasterStart();
         break;
     case EvId::exit:
         break;
@@ -285,10 +285,35 @@ MasterFSM::queryAddressState(MasterFSM& me, const Event& event)
     switch (ev)
     {
     case EvId::entry:
+        me.startTimer(me.m_config->masterTokenClientTimeout());
+        me.m_master->sendAddressDiscovery();
+        break;
+
+    case EvId::exit:
+        me.m_timer.cleanTimeout();
+        break;
+
+    case EvId::timer_timeout:
+        if (me.m_master->m_masterRx->packetRxInProgress())
+        {
+            // Somebody has started to respond. Wait a bit more.
+            me.startTimer(me.m_config->masterTokenClientTimeout());
+            LOG_INFO << "A bit delayed dicovery. Waiting more.";
+        }
+        else
+        {
+            me.m_master->m_addresses.addressQueryDone();
+            me.transition(idleState);
+        }
+        return true;
+
+    case EvId::rx_address_request:
+        // Got a request from a client. Process it.
         LOG_WARN << "Address query not implemented.";
         me.m_master->m_addresses.addressQueryDone();
         me.transition(idleState);
-        break;
+        return true;
+
     default:
         return true;
     };

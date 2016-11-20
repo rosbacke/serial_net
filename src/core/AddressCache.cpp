@@ -30,10 +30,6 @@ constexpr auto t = gsl::to_byte<0xff>();
 constexpr AddressCache::MacAddr broadcastMac{t, t, t, t, t, t};
 }
 
-AddressCache::AddressCache()
-{
-}
-
 LocalAddress
 AddressCache::getLocalAddress(const MacAddr& addr)
 {

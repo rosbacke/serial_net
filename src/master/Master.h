@@ -40,10 +40,10 @@ class Config;
 /**
  * Implement the master part of the serial shared protocol.
  */
-class Master : MasterRxIf::RxIf
+class Master : MasterPacketIf::RxIf
 {
   public:
-    Master(React::Loop& loop, MasterRxIf* mr, MasterTxIf* mt,
+    Master(React::Loop& loop, MasterPacketIf* mr, MasterTxIf* mt,
            LocalAddress ownClientAddress, Config* cfg);
 
     ~Master();
@@ -59,11 +59,14 @@ class Master : MasterRxIf::RxIf
 
     // Send the token to the next client.
     void sendToken(LocalAddress destAddr);
-    void sendMasterStartStop(bool stop);
+
+    void sendMasterStop();
+    void sendMasterStart();
+    void sendAddressDiscovery();
 
     React::Loop& m_loop;
 
-    MasterRxIf* m_masterRx;
+    MasterPacketIf* m_masterRx;
     MasterTxIf* m_masterTx;
 
     LocalAddress m_ownClientAddress;

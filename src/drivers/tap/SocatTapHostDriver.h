@@ -47,13 +47,13 @@
  * address to send to/receive from.
  *
  */
-class SocatTapHostDriver : public MsgHostIf
+class SocatTapHostDriver : public MsgHostIf::RxIf
 {
   public:
     SocatTapHostDriver(LocalAddress myAddr, AddressCache* ac, PosixFileIf* pfi);
     virtual ~SocatTapHostDriver();
 
-    void startTransfer(MsgHostIf::TxIf* txIf, React::Loop& loop);
+    void startTransfer(MsgHostIf* txIf, React::Loop& loop);
 
     /**
      * Called when a packet was received from the serial net.
@@ -63,7 +63,7 @@ class SocatTapHostDriver : public MsgHostIf
     {
         m_tap.packetReceived(STDOUT_FILENO, data, srcAddr, destAddr);
     }
-
+#if 0
     /**
      * Inform the driver where it is supposed to send its packets.
      */
@@ -71,6 +71,7 @@ class SocatTapHostDriver : public MsgHostIf
     {
         m_tap.setTx(txIf);
     }
+#endif
 
   private:
     void setupCallback(React::Loop& mainLoop);

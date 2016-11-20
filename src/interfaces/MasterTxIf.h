@@ -38,7 +38,7 @@ class MasterTxIf
   public:
     // Called by the master to send a packet. Contain everything except the
     // frame layer.
-    virtual void sendMasterPacket(const ByteVec& packet) = 0;
+    virtual void sendMasterPacket(const MsgEtherIf::EtherPkt& packet) = 0;
 
     // Return true if there are no packets queued for transmission.
     virtual bool txQueueEmpty() const = 0;
@@ -53,7 +53,7 @@ class MasterTxIf
  * Interface class implemented by the class supplying packets to
  * the master.
  */
-class MasterRxIf
+class MasterPacketIf
 {
   public:
     class RxIf
@@ -71,7 +71,7 @@ class MasterRxIf
     // being received.
     virtual bool packetRxInProgress() = 0;
 
-    virtual ~MasterRxIf(){};
+    virtual ~MasterPacketIf(){};
 };
 
 #endif /* SRC_INTERFACES_MASTERTXIF_H_ */

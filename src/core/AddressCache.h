@@ -39,7 +39,7 @@ class AddressCache
 {
   public:
     using MacAddr = std::array<gsl::byte, 6>;
-    AddressCache();
+    AddressCache(){};
 
     /**
      * Return the local address that has the given MAC address.

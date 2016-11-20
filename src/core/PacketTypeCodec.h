@@ -32,6 +32,8 @@
 #include "interfaces/MasterTxIf.h"
 #include "interfaces/SerialProtocol.h"
 
+#include "ClientAddress.h"
+
 #include <array>
 #include <cstdint>
 #include <deque>
@@ -43,7 +45,7 @@ class WSDump;
 class AddressCache;
 class TxQueue;
 
-class PacketTypeCodec : public MsgEtherIf::RxIf, public MasterRxIf
+class PacketTypeCodec : public MsgEtherIf::RxIf, public MasterPacketIf
 {
   public:
     struct RxPacket
@@ -52,11 +54,6 @@ class PacketTypeCodec : public MsgEtherIf::RxIf, public MasterRxIf
         LocalAddress srcAddr;
         LocalAddress destAddr;
     };
-
-    void setHostIf(MsgHostIf* msgHostIf)
-    {
-        m_msgHostIf = msgHostIf;
-    }
 
     void setMasterEndedCB(std::function<void()> fkn)
     {
@@ -96,7 +93,7 @@ class PacketTypeCodec : public MsgEtherIf::RxIf, public MasterRxIf
     virtual void msgEtherRx_newMsg(const MsgEtherIf::EtherPkt& packet) override;
 
     // Called by the master to set up reception of packets.
-    virtual void regMasterRx(MasterRxIf::RxIf* rxIf) override
+    virtual void regMasterRx(MasterPacketIf::RxIf* rxIf) override
     {
         m_master = rxIf;
     }
@@ -108,10 +105,9 @@ class PacketTypeCodec : public MsgEtherIf::RxIf, public MasterRxIf
     }
 
     MsgEtherIf* m_msgEtherIf;
-    MsgHostIf* m_msgHostIf;
     TxQueue* m_txQueue;
 
-    MasterRxIf::RxIf* m_master;
+    MasterPacketIf::RxIf* m_master;
     WSDump* m_wsDump;
 
     LocalAddress m_ownAddress;
@@ -119,6 +115,7 @@ class PacketTypeCodec : public MsgEtherIf::RxIf, public MasterRxIf
 
     std::function<void()> m_masterEndedCB;
     AddressCache* m_cache = nullptr;
+    ClientAddress m_clientAddress;
 };
 
 #endif /* SRC_CORE_PACKETTYPECODEC_H_ */

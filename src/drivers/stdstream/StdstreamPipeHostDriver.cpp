@@ -26,6 +26,7 @@
 
 #include "hal/PosixIf.h"
 #include "utility/Log.h"
+#include <unistd.h>
 
 StdstreamPipeHostDriver::StdstreamPipeHostDriver(LocalAddress myAddr,
                                                  PosixFileIf* posixIf)
@@ -47,7 +48,7 @@ StdstreamPipeHostDriver::startStdout(LocalAddress rxAddress)
 
 void
 StdstreamPipeHostDriver::startStdin(LocalAddress destAddr, MsgHostIf* txIf,
-                                    React::MainLoop& mainLoop)
+                                    EventLoop& mainLoop)
 {
     m_destAddr = destAddr;
     m_txHandler = txIf;
@@ -55,7 +56,7 @@ StdstreamPipeHostDriver::startStdin(LocalAddress destAddr, MsgHostIf* txIf,
 }
 
 void
-StdstreamPipeHostDriver::setupCallback(React::MainLoop& mainLoop)
+StdstreamPipeHostDriver::setupCallback(EventLoop& mainLoop)
 {
     // we'd like to be notified when input is available on stdin
     mainLoop.onReadable(STDIN_FILENO, [this]() -> bool {
@@ -69,7 +70,7 @@ StdstreamPipeHostDriver::setupCallback(React::MainLoop& mainLoop)
             if (m_txHandler && m_destAddr != LocalAddress::null_addr)
             {
                 m_txHandler->msgHostTx_sendPacket(
-                    MsgHostIf::HostPkt(buffer, dataRead), m_myAddr, m_destAddr);
+                    MsgHostIf::HostPkt(buffer, dataRead), m_destAddr);
             }
         }
         // return true, so that we also return future read events

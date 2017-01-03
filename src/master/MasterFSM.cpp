@@ -29,293 +29,321 @@
 #include "utility/Log.h"
 #include <gsl/gsl>
 
-#define EL(x) {MasterFSM::x, #x},
-
 using namespace std::string_literals;
 using namespace gsl;
 
-std::vector<MasterFSM::State> MasterFSM::m_states = {
-    //
-    EL(initState)                 //
-    EL(idleState)                 //
-    EL(sendingTokenState)         //
-    EL(waitClientPacketDoneState) //
+namespace
+{
+
+class MasterStateBase : public StateBase<MasterHSM>
+{
+  protected:
+    const Config* m_config = nullptr;
+    Master* m_master = nullptr;
+
+    MasterStateBase(MasterHSM& hsm)
+        : StateBase(hsm), m_config(hsm.m_config), m_master(hsm.m_master)
+    {
+    }
+
+    void startTimer(double interval)
+    {
+        hsm().m_timer.makeTimeout(interval, [&]() {
+            LOG_TRACE << "Timeout expired, post event.";
+            hsm().postEvent(Event::Id::timer_timeout);
+        });
+    }
+
+    void startTimerAbs(double timepoint)
+    {
+        hsm().m_timer.makeTimeoutAbs(timepoint, [&]() {
+            LOG_TRACE << "Timepoint passed, post event.";
+            hsm().postEvent(Event::Id::timer_timeout);
+        });
+    }
+
+    void cleanTimer()
+    {
+        hsm().m_timer.cleanTimeout();
+    }
 };
 
-std::string
-MasterFSM::toString(StateFkn fkn)
+class Init : public MasterStateBase
 {
-    auto iter = std::find_if(
-        m_states.begin(), m_states.end(),
-        [&](const MasterFSM::State& el) { return fkn == el.m_fkn; });
-    return iter != m_states.end() ? iter->m_str : "";
-}
-
-MasterFSM::MasterFSM(Master* master, Config* config, React::Loop& loop)
-    : m_state(initState), m_nextState(nullptr), m_master(master),
-      m_config(config), m_timer(loop){};
-
-void
-MasterFSM::start()
-{
-    Event entry(EvId::entry);
-    emitEvent(entry);
-    postEvent(Event::Id::init);
-}
-
-void
-MasterFSM::postEvent(const Event& event)
-{
-    bool doProcess = m_events.empty();
-    if (doProcess)
+  public:
+    Init(MasterHSM& fsm) : MasterStateBase(fsm)
     {
-        stateProcess(event); // We know the queue is empty here.
-        while (!m_events.empty())
+        fsm.m_master->m_tx.sendMasterStart();
+    }
+
+    bool event(const Event& ev)
+    {
+        switch (ev.m_id)
         {
-            auto& ev = m_events.front();
-            stateProcess(ev);
-            m_events.pop();
+        case Event::Id::init:
+            transition(StateId::idle);
+            return true;
+            break;
+        default:
+            break;
         }
+        return false;
     }
-    else
+};
+
+class Idle : public MasterStateBase
+{
+  public:
+    Idle(MasterHSM& hsm) : MasterStateBase(hsm)
     {
-        m_events.push(event);
+        nextAction();
     }
-}
 
-void
-MasterFSM::stateProcess(const Event& ev)
-{
-    emitEvent(ev);
-    while (m_nextState)
+    ~Idle()
     {
-        emitEvent(Event(EvId::exit));
-        m_state = m_nextState;
-        m_nextState = nullptr;
-        emitEvent(Event(EvId::entry));
+        cleanTimer();
     }
-}
 
-void
-MasterFSM::emitEvent(const Event& ev)
-{
-    LOG_TRACE << "Do evId:" << Event::toString(ev.m_id)
-              << " in state: " << toString(m_state);
-    m_state(*this, ev);
-}
-
-void
-MasterFSM::startTimer(double interval)
-{
-    m_timer.makeTimeout(interval, [&]() {
-        LOG_TRACE << "Timeout expired, post event.";
-        postEvent(EvId::timer_timeout);
-    });
-}
-
-void
-MasterFSM::startTimerAbs(double timepoint)
-{
-    m_timer.makeTimeoutAbs(timepoint, [&]() {
-        LOG_TRACE << "Timepoint passed, post event.";
-        postEvent(EvId::timer_timeout);
-    });
-}
-
-bool
-MasterFSM::initState(MasterFSM& me, const Event& event)
-{
-    auto ev = event.m_id;
-    switch (ev)
+    bool event(const Event& ev)
     {
-    case EvId::entry:
-        me.m_master->sendMasterStart();
-        break;
-    case EvId::exit:
-        break;
-    case EvId::init:
-        me.transition(idleState);
-        return true;
-    default:
-        break;
+        switch (ev.m_id)
+        {
+        case Event::Id::timer_timeout:
+            transition(StateId::idle);
+            return true;
+            break;
+        default:
+            break;
+        }
+        return false;
     }
-    return false;
-}
 
-bool
-MasterFSM::idleState(MasterFSM& me, const Event& event)
-{
-    auto ev = event.m_id;
-    switch (ev)
-    {
-    case EvId::timer_timeout:
-    case EvId::entry:
+  private:
+    void nextAction()
     {
         using Cmd = Action::Cmd;
-        auto action = me.m_master->m_addresses.nextAction();
+        auto action = m_master->m_actionHandler.nextAction();
         LOG_DEBUG << "Next action:" << ::toString(action.m_action)
                   << " addr:" << action.m_address
                   << " time: " << action.m_nextTime;
         switch (action.m_action)
         {
         case Cmd::delay:
-            me.startTimerAbs(action.m_nextTime);
+            startTimerAbs(action.m_nextTime);
             break;
         case Cmd::send_token:
         {
             auto addr = action.m_address;
-            if (addr == me.m_master->m_ownClientAddress)
+            if (addr == m_master->m_tx.clientAddress())
             {
                 LOG_TRACE << "Give token to own client.";
-                if (me.m_master->m_masterTx->txQueueEmpty())
+                if (m_master->m_tx.txQueueEmpty())
                 {
                     // Client do not have anything to send.
-                    me.m_master->m_addresses.gotReturnToken();
-                    me.transition(idleState);
+                    m_master->m_actionHandler.gotReturnToken();
+                    transition(StateId::idle);
                 }
                 else
                 {
                     // Client is sending.
-                    me.m_master->m_masterTx->sendClientPacket();
-                    me.transition(waitClientPacketDoneState);
+                    m_master->m_tx.sendClientPacket();
+                    transition(StateId::waitClientPacketDone);
                 }
             }
             else
             {
                 // Send token to some other client.
-                me.m_master->sendToken(addr);
-                me.transition(sendingTokenState);
+                m_master->m_tx.sendToken(addr);
+                transition(StateId::sendingToken);
             }
             break;
         }
         case Cmd::query_address:
-            me.transition(queryAddressState);
+            transition(StateId::queryAddress);
             break;
         }
-        break;
     }
-    case EvId::exit:
-        me.m_timer.cleanTimeout();
-        break;
-    default:
-        break;
-    }
-    return false;
-}
-
-bool
-MasterFSM::sendingTokenState(MasterFSM& me, const Event& event)
-{
-    auto ev = event.m_id;
-    switch (ev)
-    {
-    case EvId::entry:
-        me.startTimer(me.m_config->masterTokenGrantTx2RxTime());
-        break;
-
-    case EvId::exit:
-        me.m_timer.cleanTimeout();
-        break;
-
-    case EvId::rx_grant_token:
-        me.transition(waitClientPacketDoneState);
-        return true;
-
-    case EvId::timer_timeout:
-        // Timeout. We should have received the grant token by now.
-        // Something went wrong.
-        LOG_WARN << "Did not detect my own transmission of the token.";
-        me.transition(idleState);
-        return true;
-
-    default:
-        break;
-    }
-    return false;
-}
-
-bool
-MasterFSM::waitClientPacketDoneState(MasterFSM& me, const Event& event)
-{
-    auto ev = event.m_id;
-    switch (ev)
-    {
-    case EvId::entry:
-        me.startTimer(me.m_config->masterTokenClientTimeout());
-        break;
-
-    case EvId::exit:
-        me.m_timer.cleanTimeout();
-        break;
-
-    case EvId::rx_client_packet:
-        me.m_master->m_addresses.packetStarted();
-        me.transition(idleState);
-        return true;
-
-    case EvId::rx_return_token:
-        // Client got nothing to send. Move on.
-        me.m_master->m_addresses.gotReturnToken();
-        me.transition(idleState);
-        return true;
-
-    case EvId::timer_timeout:
-        if (me.m_master->m_masterRx->packetRxInProgress())
-        {
-            me.startTimer(me.m_config->masterTokenClientTimeout());
-        }
-        else
-        {
-            // Timeout. Assume the client isn't there. move on.
-            me.m_master->m_addresses.tokenTimeout();
-            me.transition(idleState);
-        }
-        return true;
-
-    default:
-        break;
-    }
-    return false;
-}
-
-bool
-MasterFSM::queryAddressState(MasterFSM& me, const Event& event)
-{
-    auto ev = event.m_id;
-    switch (ev)
-    {
-    case EvId::entry:
-        me.startTimer(me.m_config->masterTokenClientTimeout());
-        me.m_master->sendAddressDiscovery();
-        break;
-
-    case EvId::exit:
-        me.m_timer.cleanTimeout();
-        break;
-
-    case EvId::timer_timeout:
-        if (me.m_master->m_masterRx->packetRxInProgress())
-        {
-            // Somebody has started to respond. Wait a bit more.
-            me.startTimer(me.m_config->masterTokenClientTimeout());
-            LOG_INFO << "A bit delayed dicovery. Waiting more.";
-        }
-        else
-        {
-            me.m_master->m_addresses.addressQueryDone();
-            me.transition(idleState);
-        }
-        return true;
-
-    case EvId::rx_address_request:
-        // Got a request from a client. Process it.
-        LOG_WARN << "Address query not implemented.";
-        me.m_master->m_addresses.addressQueryDone();
-        me.transition(idleState);
-        return true;
-
-    default:
-        return true;
-    };
-    return false;
 };
+
+class SendingToken : public MasterStateBase
+{
+  public:
+    SendingToken(MasterHSM& hsm) : MasterStateBase(hsm)
+    {
+        startTimer(m_config->masterTokenGrantTx2RxTime());
+    }
+
+    ~SendingToken()
+    {
+        cleanTimer();
+    }
+
+    bool event(const Event& event)
+    {
+        auto ev = event.m_id;
+        switch (ev)
+        {
+        case Event::Id::rx_grant_token:
+            transition(StateId::waitClientPacketDone);
+            return true;
+
+        case Event::Id::timer_timeout:
+            // Timeout. We should have received the grant token by now.
+            // Something went wrong.
+            LOG_WARN << "Did not detect my own transmission of the token.";
+            transition(StateId::idle);
+            return true;
+
+        default:
+            break;
+        }
+        return false;
+    }
+};
+
+class WaitClientPacketDoneState : public MasterStateBase
+{
+  public:
+    WaitClientPacketDoneState(MasterHSM& hsm) : MasterStateBase(hsm)
+    {
+        startTimer(m_config->masterTokenClientTimeout());
+    }
+
+    ~WaitClientPacketDoneState()
+    {
+        cleanTimer();
+    }
+
+    bool event(const Event& event)
+    {
+        auto ev = event.m_id;
+        switch (ev)
+        {
+        case Event::Id::rx_client_packet:
+            m_master->m_actionHandler.packetStarted();
+            transition(StateId::idle);
+            return true;
+
+        case Event::Id::rx_return_token:
+            // Client got nothing to send. Move on.
+            m_master->m_actionHandler.gotReturnToken();
+            transition(StateId::idle);
+            return true;
+
+        case Event::Id::timer_timeout:
+            if (m_master->m_masterRx->packetRxInProgress())
+            {
+                startTimer(m_config->masterTokenClientTimeout());
+            }
+            else
+            {
+                // Timeout. Assume the client isn't there. move on.
+                m_master->m_actionHandler.tokenTimeout();
+                transition(StateId::idle);
+            }
+            return true;
+        default:
+            break;
+        }
+        return false;
+    }
+};
+
+class QueryAddressState : public MasterStateBase
+{
+  public:
+    QueryAddressState(MasterHSM& hsm) : MasterStateBase(hsm)
+    {
+        startTimer(m_config->masterTokenClientTimeout());
+        m_master->m_tx.sendAddressDiscovery();
+    }
+
+    ~QueryAddressState()
+    {
+        cleanTimer();
+    }
+
+    bool event(const Event& event)
+    {
+        auto ev = event.m_id;
+        switch (ev)
+        {
+        case Event::Id::timer_timeout:
+            if (m_master->m_masterRx->packetRxInProgress())
+            {
+                // Somebody has started to respond. Wait a bit more.
+                startTimer(m_config->masterTokenClientTimeout());
+                LOG_INFO << "A bit delayed discovery. Waiting more.";
+            }
+            else
+            {
+                m_master->m_actionHandler.addressQueryDone();
+                transition(StateId::idle);
+            }
+            return true;
+
+        case Event::Id::rx_address_request:
+            m_master->m_dynamicHandler.receivedAddressRequest(
+                boost::get<packet::AddressRequest>(event.eventData));
+
+            // Got a request from a client. Process it.
+            transition(StateId::waitAddressReply);
+            return true;
+
+        default:
+            break;
+        };
+        return false;
+    }
+};
+
+class WaitAddressReply : public MasterStateBase
+{
+  public:
+    WaitAddressReply(MasterHSM& hsm) : MasterStateBase(hsm)
+    {
+        startTimer(m_config->masterTokenClientTimeout());
+    }
+
+    ~WaitAddressReply()
+    {
+        cleanTimer();
+        m_master->m_actionHandler.addressQueryDone();
+    }
+
+    bool event(const Event& event)
+    {
+        auto ev = event.m_id;
+        switch (ev)
+        {
+        case Event::Id::timer_timeout:
+            if (m_master->m_masterRx->packetRxInProgress())
+            {
+                // Still sending addressReply
+                startTimer(m_config->masterTokenClientTimeout());
+            }
+            else
+            {
+                transition(StateId::idle);
+            }
+            return true;
+
+        default:
+            break;
+        };
+        return false;
+    }
+};
+
+} // anonymous namespace.
+
+MasterHSM::MasterHSM(Master* master, Config* config, EventLoop& loop)
+    : m_master(master), m_config(config), m_timer(loop)
+{
+    addState<Init, StateId::init>();
+    addState<Idle, StateId::idle>();
+    addState<SendingToken, StateId::sendingToken>();
+    addState<WaitClientPacketDoneState, StateId::waitClientPacketDone>();
+    addState<QueryAddressState, StateId::queryAddress>();
+    addState<WaitAddressReply, StateId::waitAddressReply>();
+}

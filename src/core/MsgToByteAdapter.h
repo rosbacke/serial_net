@@ -25,10 +25,10 @@
 #ifndef SRC_CORE_MSGTOBYTEADAPTER_H_
 #define SRC_CORE_MSGTOBYTEADAPTER_H_
 
+#include "../eventwrapper/EventLoop.h"
 #include "FrameCodec.h"
 #include "interfaces/ByteEtherIf.h"
 #include "interfaces/MsgEtherIf.h"
-#include <reactcpp.h>
 
 /**
  * Handle the byte to frame encoding/decoding.
@@ -42,9 +42,9 @@ class MsgToByteAdapter : public MsgEtherIf, public ByteEtherIf::RxIf
     virtual ~MsgToByteAdapter();
 
     /// Set execution loop for timeout handling.
-    void setExecLoop(React::Loop& loop)
+    void setExecLoop(EventLoop* loop)
     {
-        m_loop = &loop;
+        m_loop = loop;
     }
 
     // MsgEtherIf methods.
@@ -81,7 +81,7 @@ class MsgToByteAdapter : public MsgEtherIf, public ByteEtherIf::RxIf
     ByteEtherIf* m_beIf = nullptr;
     MsgEtherIf::RxIf* m_cb = nullptr;
     FrameCodec m_codec;
-    React::Loop* m_loop = nullptr;
+    EventLoop* m_loop = nullptr;
 
     /// Timepoint when the byte was received.
     double m_lastUpdate = 0.0;

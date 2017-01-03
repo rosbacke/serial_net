@@ -106,12 +106,13 @@ TapProtocol::doRead(int fd)
     LOG_DEBUG << "Read TAP total length: " << readLen;
 
     EtherHeader* etherHeader = &tapHeader->m_ether;
-    m_cache->updateMyMAC(m_myAddr, etherHeader->m_srcMAC);
+    m_cache->updateMyMAC(m_txIf->msgHostTx_clientAddress(),
+                         etherHeader->m_srcMAC);
 
     destAddr = m_cache->getLocalAddress(tapHeader->m_ether.m_destMAC);
     if (destAddr == LocalAddress::null_addr)
     {
-        LOG_DEBUG << "Tap: no local address for mac. Skip tx.";
+        LOG_INFO << "Tap: no local address for mac. Skip tx.";
         return;
     }
 
@@ -121,7 +122,7 @@ TapProtocol::doRead(int fd)
     if (m_txIf)
     {
         MsgHostIf::HostPkt hostPkt(rx.data(), readLen);
-        m_txIf->msgHostTx_sendPacket(hostPkt, m_myAddr, destAddr);
+        m_txIf->msgHostTx_sendPacket(hostPkt, destAddr);
     }
 }
 
@@ -137,6 +138,16 @@ TapProtocol::packetReceived(int fd, const ByteVec& data, LocalAddress srcAddr,
     {
         LOG_DEBUG << "No cache.";
         return;
+    }
+    if (srcAddr != LocalAddress::broadcast)
+    {
+        auto srcMac = m_cache->getMac(srcAddr);
+        if (!srcMac.first)
+        {
+            const TapHeader* tapHeader =
+                reinterpret_cast<const TapHeader*>(data.data());
+            m_cache->setAddress(srcAddr, tapHeader->m_ether.m_srcMAC);
+        }
     }
     auto srcMac = m_cache->getMac(srcAddr);
     auto destMac = m_cache->getMac(destAddr);
@@ -177,8 +188,7 @@ TapProtocol::checkArp(const TapHeader* tap)
             // Pick up the ethernet addr from the layer 2. Simulate existing
             // practice
             // in layer 2 switches.
-            m_txIf->msgHostTx_sendAddressUpdate(m_myAddr,
-                                                tap->m_ether.m_srcMAC);
+            m_txIf->msgHostTx_sendMacUpdate(tap->m_ether.m_srcMAC);
         }
     }
 }

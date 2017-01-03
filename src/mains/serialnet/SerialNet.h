@@ -30,7 +30,6 @@
 #include "hal/PosixFileReal.h"
 #include "hal/PosixTunTapReal.h"
 #include "interfaces/MsgEtherIf.h"
-#include "interfaces/RuntimeIf.h"
 #include "utility/Config.h"
 
 #include "SNConfig.h"
@@ -43,9 +42,9 @@
 
 #include <memory>
 
+#include "../../eventwrapper/EventLoop.h"
 #include <core/AddressCache.h>
 #include <drivers/tap/SocatTapHostDriver.h>
-#include <reactcpp.h>
 
 namespace po = boost::program_options;
 
@@ -87,11 +86,11 @@ class SerialNet
     PosixTunTapReal m_posixTunTapIf;
 
     // Interface to the lower level frame interface.
-    MsgEtherIf* m_msgEther;
+    MsgEtherIf* m_msgEther = nullptr;
 
     // Configuration from file/various timing constants.
     Config m_config;
-    React::MainLoop m_loop;
+    EventLoop m_loop;
     std::unique_ptr<SerialHalReal> m_serialHalReal;
     std::unique_ptr<PacketTypeCodec> m_packetTypeCodec;
     std::unique_ptr<TxQueue> m_txQueue;
@@ -103,7 +102,6 @@ class SerialNet
     std::unique_ptr<AddressCache> m_addressCache;
 
     std::unique_ptr<MsgToByteAdapter> m_msgToByteAdapter;
-
     std::unique_ptr<SerialByteEther> m_serialByteEther;
 
     std::unique_ptr<Master> m_master;

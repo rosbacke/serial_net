@@ -27,7 +27,8 @@
 
 #include <deque>
 
-#include "../interfaces/MasterTxIf.h"
+#include "interfaces/MasterTxIf.h"
+#include "utility/Log.h"
 #include "utility/Utility.h"
 
 #include "interfaces/MsgHostIf.h"
@@ -39,23 +40,37 @@ class TxQueue : public MsgHostIf, public MasterTxIf
 {
   public:
     TxQueue(MsgEtherIf* msgEtherIf, LocalAddress ownAddr)
-        : m_msgEtherIf(msgEtherIf), m_ownAddress(ownAddr)
+        : m_msgEtherIf(msgEtherIf), m_ownAddress(ownAddr),
+          m_gotDynamicAddress(ownAddr == LocalAddress::null_addr)
     {
+        LOG_INFO << "Set own address to :" << ownAddr << " at start.";
     }
     ~TxQueue()
     {
+    }
+
+    void setAddress(LocalAddress addr)
+    {
+        LOG_INFO << "Set own address to :" << addr;
+        m_ownAddress = addr;
+        if (m_addrChangeIf)
+        {
+            m_addrChangeIf->msgHostRx_newAddr(m_ownAddress);
+        }
     }
 
     void sendPacket(const MsgHostIf::HostPkt& data, LocalAddress address);
 
     // Implement MsgHostIf::TxIf interface.
     virtual void msgHostTx_sendPacket(const MsgHostIf::HostPkt& data,
-                                      LocalAddress srcAddr,
                                       LocalAddress destAddr) override;
 
-    virtual void
-    msgHostTx_sendAddressUpdate(LocalAddress address,
-                                std::array<gsl::byte, 6> mac) override;
+    virtual void msgHostTx_sendMacUpdate(std::array<gsl::byte, 6> mac) override;
+
+    virtual LocalAddress msgHostTx_clientAddress() const override
+    {
+        return m_ownAddress;
+    }
 
     // Called by the master to send a packet. Contain everything except the
     // frame layer.
@@ -63,6 +78,11 @@ class TxQueue : public MsgHostIf, public MasterTxIf
 
     // Own client can send a packet.
     virtual void sendClientPacket() override;
+
+    virtual LocalAddress clientAddress() const override
+    {
+        return m_ownAddress;
+    }
 
     // Return true if the Tx queue is empty.
     virtual bool txQueueEmpty() const override
@@ -83,6 +103,15 @@ class TxQueue : public MsgHostIf, public MasterTxIf
         return m_rxIf;
     }
 
+    virtual void setAddrUpdateHandler(MsgHostIf::AddrChange* ac)
+    {
+        m_addrChangeIf = ac;
+    }
+
+    // Indicate that the master on this bus has started again.
+    // Reset any dynamically assigned addresses.
+    void masterStarted();
+
   private:
     // Inform the master that we do not have a packet to send.
     void sendReturnToken();
@@ -90,7 +119,10 @@ class TxQueue : public MsgHostIf, public MasterTxIf
     std::deque<ByteVec> m_txMsg;
     MsgEtherIf* m_msgEtherIf = nullptr;
     LocalAddress m_ownAddress = LocalAddress::null_addr;
+    bool m_gotDynamicAddress;
+
     MsgHostIf::RxIf* m_rxIf = nullptr;
+    MsgHostIf::AddrChange* m_addrChangeIf = nullptr;
 };
 
 #endif /* SRC_CORE_TXQUEUE_H_ */

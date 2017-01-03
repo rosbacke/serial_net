@@ -26,12 +26,14 @@
 #define SRC_CORE_MASTER_H_
 
 #include "MasterFSM.h"
+#include "MasterPacketTx.h"
 #include "MasterScheduler.h"
 #include "MasterUtils.h"
+
 #include "core/PacketTypeCodec.h"
 
 #include "ActionHandler.h"
-#include <reactcpp.h>
+#include "DynamicHandler.h"
 
 #include "Event.h"
 
@@ -43,8 +45,7 @@ class Config;
 class Master : MasterPacketIf::RxIf
 {
   public:
-    Master(React::Loop& loop, MasterPacketIf* mr, MasterTxIf* mt,
-           LocalAddress ownClientAddress, Config* cfg);
+    Master(EventLoop& loop, MasterPacketIf* mr, MasterTxIf* mt, Config* cfg);
 
     ~Master();
 
@@ -57,24 +58,15 @@ class Master : MasterPacketIf::RxIf
     masterPacketReceived(MessageType type,
                          const MsgEtherIf::EtherPkt& packet) override;
 
-    // Send the token to the next client.
-    void sendToken(LocalAddress destAddr);
-
-    void sendMasterStop();
-    void sendMasterStart();
-    void sendAddressDiscovery();
-
-    React::Loop& m_loop;
-
+    EventLoop& m_loop;
     MasterPacketIf* m_masterRx;
-    MasterTxIf* m_masterTx;
-
-    LocalAddress m_ownClientAddress;
 
     Config* m_config;
-
-    ActionHandler m_addresses;
-    MasterFSM m_fsm;
+    MasterPacketTx m_tx;
+    MasterScheduler m_scheduler;
+    DynamicHandler m_dynamicHandler;
+    ActionHandler m_actionHandler;
+    MasterHSM m_fsm;
 };
 
 #endif /* SRC_CORE_MASTER_H_ */

@@ -25,9 +25,8 @@
 #ifndef SRC_DRIVERS_TUN_SOCATTAPHOSTDRIVER_H_
 #define SRC_DRIVERS_TUN_SOCATTAPHOSTDRIVER_H_
 
+#include "../../eventwrapper/EventLoop.h"
 #include "interfaces/MsgHostIf.h"
-#include "reactcpp.h"
-
 #include <array>
 #include <core/AddressCache.h>
 
@@ -50,31 +49,19 @@
 class SocatTapHostDriver : public MsgHostIf::RxIf
 {
   public:
-    SocatTapHostDriver(LocalAddress myAddr, AddressCache* ac, PosixFileIf* pfi);
+    SocatTapHostDriver(AddressCache* ac, PosixFileIf* pfi);
     virtual ~SocatTapHostDriver();
 
-    void startTransfer(MsgHostIf* txIf, React::Loop& loop);
+    void startTransfer(MsgHostIf* txIf, EventLoop& loop);
 
     /**
      * Called when a packet was received from the serial net.
      */
     virtual void packetReceived(const ByteVec& data, LocalAddress srcAddr,
-                                LocalAddress destAddr) override
-    {
-        m_tap.packetReceived(STDOUT_FILENO, data, srcAddr, destAddr);
-    }
-#if 0
-    /**
-     * Inform the driver where it is supposed to send its packets.
-     */
-    virtual void setTxHandler(TxIf* txIf) override
-    {
-        m_tap.setTx(txIf);
-    }
-#endif
+                                LocalAddress destAddr) override;
 
   private:
-    void setupCallback(React::Loop& mainLoop);
+    void setupCallback(EventLoop& mainLoop);
     TapProtocol m_tap;
 };
 

@@ -28,6 +28,7 @@
 #include "PosixIf.h"
 
 #include <fcntl.h>
+#include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -54,6 +55,10 @@ class PosixFileReal final : public PosixFileIf
     int close(int fd) final
     {
         return ::close(fd);
+    }
+    int system(const char* cmd) final
+    {
+        return ::system(cmd);
     }
 };
 

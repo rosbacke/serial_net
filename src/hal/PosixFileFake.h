@@ -70,6 +70,10 @@ class PosixFileFake : public PosixFileIf
         m_cnt++;
         return m_res;
     }
+    int system(const char*) final
+    {
+        return -1;
+    }
 
     std::string m_path;
     ssize_t m_res;

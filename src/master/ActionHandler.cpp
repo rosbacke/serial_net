@@ -26,25 +26,18 @@
 
 #include "MasterScheduler.h"
 
-ActionHandler::ActionHandler(React::Loop& loop, Config* cfg)
-    : m_minAddr(cfg->masterLowAddress()), m_maxAddr(cfg->masterHighAddress()),
-      m_loop(loop), m_config(cfg)
+ActionHandler::ActionHandler(EventLoop& loop, Config* cfg, MasterScheduler& ms,
+                             DynamicHandler* dh)
+    : m_minAddr(cfg->staticLowAddress()), m_maxAddr(cfg->staticHighAddress()),
+      m_loop(loop), m_config(cfg), m_scheduler(ms), m_dynamic(dh)
 {
-    using State = AddressLine::State;
-
-    m_table.resize(m_maxAddr - m_minAddr + 1);
     double now = loop.now();
     for (int i = m_minAddr; i <= m_maxAddr; ++i)
     {
-        m_table[i].setInit(State::active);
+        m_table.emplace_back(toLocalAddress(i));
         m_scheduler.addAction(
             Action::makeSendTokenAction(static_cast<LocalAddress>(i)), now);
     }
-    m_scheduler.addAction(Action::makeQueryAddressAction(), now);
-}
-
-ActionHandler::~ActionHandler()
-{
 }
 
 double
@@ -69,10 +62,12 @@ ActionHandler::nextTime(AddressLine::State state)
 AddressLine*
 ActionHandler::find(LocalAddress address)
 {
-    auto offset = static_cast<int>(address) - m_minAddr;
-    if (offset < static_cast<int>(m_table.size()) && offset >= 0)
+    auto i = std::find_if(
+        m_table.begin(), m_table.end(),
+        [&](const auto& el) -> bool { return address == el.getAddr(); });
+    if (i != m_table.end())
     {
-        return &m_table[offset];
+        return &(*i);
     }
     else
     {
@@ -85,16 +80,30 @@ ActionHandler::updateAddressLine(AddressLine::State newState)
 {
     auto addr = m_scheduler.active().m_action.m_address;
 
-    auto line = find(addr);
+    AddressLine* line = find(addr);
     line->setState(newState);
-
     if (m_frontInProgress)
     {
         m_scheduler.pop();
         m_frontInProgress = false;
+    }
+    if (line->removeDynamic())
+    {
+        removeLine(line);
+        m_dynamic->releaseAddress(addr);
+    }
+    else
+    {
         m_scheduler.addAction(Action::makeSendTokenAction(addr),
                               nextTime(line->getState()));
     }
+}
+
+void
+ActionHandler::removeLine(AddressLine* line)
+{
+    size_t offset = line - m_table.data();
+    m_table.erase(m_table.begin() + offset);
 }
 
 void
@@ -141,6 +150,14 @@ ActionHandler::nextAction()
     {
         return Action::makeDelayAction(a.m_nextTime);
     }
+}
+
+void
+ActionHandler::addDynamic(LocalAddress local)
+{
+    m_table.emplace_back(local, AddressLine::State::idle, true);
+    m_scheduler.addAction(Action::makeSendTokenAction(local),
+                          m_loop.now() + 0.01);
 }
 
 std::string

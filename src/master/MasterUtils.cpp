@@ -37,7 +37,7 @@ MasterUtils::~MasterUtils()
     // TODO Auto-generated destructor stub
 }
 
-Timer::Timer(React::Loop& loop) : m_loop(loop)
+Timer::Timer(EventLoop& loop) : m_loop(loop)
 {
     m_timeoutHelper = std::make_shared<void*>(nullptr);
 }

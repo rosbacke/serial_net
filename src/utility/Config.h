@@ -46,7 +46,7 @@ class Config
     /**
      * Lowest address to check if somebody want to send.
      */
-    int masterLowAddress() const
+    int staticLowAddress() const
     {
         return 1;
     }
@@ -54,9 +54,25 @@ class Config
     /**
      * Highest address to check if somebody want to send.
      */
-    int masterHighAddress() const
+    int staticHighAddress() const
     {
-        return 16;
+        return 3;
+    }
+
+    /**
+     * Lowest address to check if somebody want to send.
+     */
+    int dynamicLowAddress() const
+    {
+        return 33;
+    }
+
+    /**
+     * Highest address to check if somebody want to send.
+     */
+    int dynamicHighAddress() const
+    {
+        return 48;
     }
 
     /**

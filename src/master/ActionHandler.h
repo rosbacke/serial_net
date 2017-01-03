@@ -27,8 +27,8 @@
 
 #include "Action.h"
 #include "AddressLine.h"
+#include "DynamicHandler.h"
 #include "interfaces/SerialProtocol.h"
-#include "reactcpp.h"
 #include "utility/Config.h"
 
 #include "MasterScheduler.h"
@@ -37,6 +37,7 @@
 
 /**
  * A table with all the active addresses that the master cares about.
+ * Handle static address statuses.
  */
 class ActionHandler
 {
@@ -44,8 +45,9 @@ class ActionHandler
     /**
      * Set up AddressTable.
      */
-    ActionHandler(React::Loop& loop, Config* cfg);
-    ~ActionHandler();
+    ActionHandler(EventLoop& loop, Config* cfg, MasterScheduler& ms,
+                  DynamicHandler* dh);
+    ~ActionHandler(){};
 
     void gotReturnToken();
 
@@ -59,6 +61,8 @@ class ActionHandler
     // Query the next token action to perform.
     Action nextAction();
 
+    void addDynamic(LocalAddress local);
+
   private:
     void updateAddressLine(AddressLine::State newState);
 
@@ -67,6 +71,7 @@ class ActionHandler
     double nextTime(AddressLine::State state);
 
     AddressLine* find(LocalAddress address);
+    void removeLine(AddressLine* line);
 
     std::vector<AddressLine> m_table;
 
@@ -74,10 +79,11 @@ class ActionHandler
 
     int m_minAddr;
     int m_maxAddr;
-    React::Loop& m_loop;
+    EventLoop& m_loop;
 
     Config* m_config;
-    MasterScheduler m_scheduler;
+    MasterScheduler& m_scheduler;
+    DynamicHandler* m_dynamic;
 };
 
 std::string

@@ -8,5 +8,6 @@ add_executable(statechart_test ${statechart_test_SRC})
 
 target_link_libraries (statechart_test statechart)
 target_link_libraries (statechart_test gtest)
+target_link_libraries (statechart_test utility)
 
 add_test( statechart_test statechart_test)

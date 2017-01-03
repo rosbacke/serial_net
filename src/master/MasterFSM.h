@@ -25,77 +25,38 @@
 #ifndef SRC_MASTER_MASTERFSM_H_
 #define SRC_MASTER_MASTERFSM_H_
 
+#include "../eventwrapper/EventLoop.h"
 #include "Event.h"
 #include "MasterUtils.h"
 #include "utility/VecQueue.h"
 
+#include "statechart/StateChart.h"
+
 class Master;
 class Config;
 
-class MasterFSM
+class States
 {
   public:
-    MasterFSM(Master* master, Config* config, React::Loop& loop);
-    ~MasterFSM(){};
-
-    using EvId = Event::Id;
-    typedef bool (*StateFkn)(MasterFSM& self, const Event& ev);
-
-    void postEvent(EvId id)
+    using Event = ::Event;
+    enum class StateId
     {
-        Event ev(id);
-        postEvent(ev);
-    }
-
-    void postEvent(const Event& event);
-
-    static std::string toString(StateFkn fkn);
-
-    void start();
-
-  private:
-    void emitEvent(const Event& ev);
-
-    void startTimer(double interval);
-    void startTimerAbs(double timepoint);
-
-    struct State
-    {
-        StateFkn m_fkn;
-        const char* m_str;
+        init,
+        idle,
+        sendingToken,
+        waitClientPacketDone,
+        queryAddress,
+        waitAddressReply
     };
+};
 
-    static std::vector<State> m_states;
+class MasterHSM : public FsmBase<MasterHSM, States>
+{
+  public:
+    MasterHSM(Master* master, Config* config, EventLoop& loop);
 
-    // Startup state.
-    static bool initState(MasterFSM& me, const Event& ev);
-
-    // Master has the token. No client is allowed on the line.
-    // Using the scheduler to determine the next action.
-    static bool idleState(MasterFSM& me, const Event& ev);
-
-    // Token is being transmitted to client.
-    static bool sendingTokenState(MasterFSM& me, const Event& ev);
-
-    // Token is sent. Waiting for client to start and finish its packet.
-    static bool waitClientPacketDoneState(MasterFSM& me, const Event& ev);
-
-    // Send out a discovery message to find if any unit needs an address.
-    static bool queryAddressState(MasterFSM& me, const Event& event);
-
-    void transition(StateFkn fkn)
-    {
-        m_nextState = fkn;
-    }
-
-    void stateProcess(const Event& ev);
-
-    StateFkn m_state;
-    StateFkn m_nextState;
-    VecQueue<Event> m_events;
-
-    Master* m_master;
-    Config* m_config;
+    Master* m_master = nullptr;
+    Config* m_config = nullptr;
     Timer m_timer;
 };
 

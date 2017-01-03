@@ -46,6 +46,9 @@ class MasterTxIf
     // When the own client can send a packet. return true if packet was sent.
     virtual void sendClientPacket() = 0;
 
+    // Return the currently used client address.
+    virtual LocalAddress clientAddress() const = 0;
+
     virtual ~MasterTxIf(){};
 };
 

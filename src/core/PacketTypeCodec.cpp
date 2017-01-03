@@ -66,10 +66,9 @@ longEnough(const MsgEtherIf::EtherPkt& packet)
     return false;
 }
 
-PacketTypeCodec::PacketTypeCodec(MsgEtherIf* msgEtherIf, TxQueue* tx,
-                                 LocalAddress ownAddress)
+PacketTypeCodec::PacketTypeCodec(MsgEtherIf* msgEtherIf, TxQueue* tx)
     : m_msgEtherIf(msgEtherIf), m_txQueue(tx), m_master(nullptr),
-      m_wsDump(nullptr), m_ownAddress(ownAddress), m_clientAddress(m_txQueue)
+      m_wsDump(nullptr), m_clientAddress(m_txQueue)
 {
 }
 
@@ -90,14 +89,14 @@ PacketTypeCodec::rxRawPacket(const MsgEtherIf::EtherPkt& bb)
     }
     const auto cmd = byte2MessageType(bb[0]);
     LOG_TRACE << "Command: " << cmd << " raw len: " << bb.size();
-
+    LocalAddress ownAddress = m_txQueue->clientAddress();
     switch (cmd)
     {
     case MessageType::grant_token:
     {
         auto p = packet::toHeader<packet::GrantToken>(bb);
         const LocalAddress msgOwnAddr = p->m_tokenReceiver;
-        if (msgOwnAddr == m_ownAddress && m_txQueue)
+        if (msgOwnAddr == ownAddress)
         {
             m_clientAddress.rxToken(*p);
             m_txQueue->sendClientPacketOrReturnToken();
@@ -108,9 +107,8 @@ PacketTypeCodec::rxRawPacket(const MsgEtherIf::EtherPkt& bb)
     {
         auto p = packet::toHeader<packet::GrantToken>(bb);
         const LocalAddress destAddr = p->m_tokenReceiver;
-        if ((destAddr == m_ownAddress &&
-             m_ownAddress != LocalAddress::null_addr) ||
-            m_ownAddress == LocalAddress::broadcast ||
+        if ((destAddr == ownAddress && ownAddress != LocalAddress::null_addr) ||
+            ownAddress == LocalAddress::broadcast ||
             destAddr == LocalAddress::broadcast)
         {
             LOG_DEBUG << "Got a packet from: " << destAddr;
@@ -137,7 +135,9 @@ PacketTypeCodec::rxRawPacket(const MsgEtherIf::EtherPkt& bb)
         break;
 
     case MessageType::master_started:
+        m_txQueue->masterStarted();
         break;
+
     case MessageType::master_ended:
     {
         if (m_masterEndedCB)

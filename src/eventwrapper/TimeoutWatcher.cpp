@@ -16,41 +16,10 @@
  */
 
 /*
- * PosixTunTapReal.cpp
+ * TimeoutWatcher.cpp
  *
- *  Created on: 1 nov. 2016
+ *  Created on: 3 jan. 2017
  *      Author: mikaelr
  */
 
-#include "PosixTunTapReal.h"
-
-#include <arpa/inet.h>
-
-#include <linux/if.h>
-#include <linux/if_tun.h>
-
-#include <sys/ioctl.h>
-
-int
-PosixTunTapReal::ioctl_TUNSETIFF(int fd, void* ifr_p)
-{
-    return ::ioctl(fd, TUNSETIFF, ifr_p);
-}
-
-/**
- * ioctl for accessing netdevice flags.
- */
-int
-PosixTunTapReal::ioctl_SIOCSIFFLAGS(int fd, void* ifr_p)
-{
-    return ::ioctl(fd, SIOCSIFFLAGS, ifr_p);
-}
-
-/**
- * ioctl for accessing netdevice flags.
- */
-int
-PosixTunTapReal::ioctl_SIOCGIFFLAGS(int fd, void* ifr_p)
-{
-    return ::ioctl(fd, SIOCGIFFLAGS, ifr_p);
-}
+#include "TimeoutWatcher.h"

@@ -25,9 +25,8 @@
 #ifndef SRC_DRIVERS_TUN_SOCATTUNHOSTDRIVER_H_
 #define SRC_DRIVERS_TUN_SOCATTUNHOSTDRIVER_H_
 
+#include "eventwrapper/EventLoop.h"
 #include "interfaces/MsgHostIf.h"
-#include "reactcpp.h"
-
 #include <array>
 
 class PosixFileIf;
@@ -49,10 +48,10 @@ class PosixFileIf;
 class SocatTunHostDriver : public MsgHostIf::RxIf
 {
   public:
-    SocatTunHostDriver(LocalAddress myAddr, PosixFileIf* pfi);
+    SocatTunHostDriver(PosixFileIf* pfi);
     virtual ~SocatTunHostDriver();
 
-    void startTransfer(MsgHostIf* txIf, React::Loop& loop);
+    void startTransfer(MsgHostIf* txIf, EventLoop& loop);
 
     /**
      * Called when a packet was received from the serial net.
@@ -73,10 +72,9 @@ class SocatTunHostDriver : public MsgHostIf::RxIf
 
     ReadType m_readType = ReadType::header;
 
-    void setupCallback(React::Loop& mainLoop);
+    void setupCallback(EventLoop& mainLoop);
     void doRead(int fileDescriptor);
 
-    LocalAddress m_myAddr;
     MsgHostIf* m_txIf;
 
     PosixFileIf* m_posixFileIf;

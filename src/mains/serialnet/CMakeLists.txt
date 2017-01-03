@@ -19,4 +19,5 @@ target_link_libraries (serialnet utility)
 target_link_libraries (serialnet tun)
 target_link_libraries (serialnet tap)
 target_link_libraries (serialnet hal)
+target_link_libraries (serialnet eventwrapper)
 

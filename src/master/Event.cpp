@@ -24,14 +24,12 @@
 
 #include "Event.h"
 
-Event::Event()
+Event::Event() : m_id(Id::init)
 {
-    // TODO Auto-generated constructor stub
 }
 
 Event::~Event()
 {
-    // TODO Auto-generated destructor stub
 }
 
 std::string
@@ -43,8 +41,6 @@ Event::toString(Id id)
 
     switch (id)
     {
-        CASE(entry);
-        CASE(exit);
         CASE(init);
         CASE(rx_grant_token);
         CASE(rx_client_packet);

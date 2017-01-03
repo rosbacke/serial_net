@@ -31,7 +31,7 @@
 #include <queue>
 
 /**
- * Control what the master is supposed to do at certain timepoints.
+ * Keep track of upcoming tasks to be done in the future.
  */
 class MasterScheduler
 {

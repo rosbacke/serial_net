@@ -24,8 +24,6 @@
 
 #include "MsgToByteAdapter.h"
 
-#include <reactcpp.h>
-
 MsgToByteAdapter::MsgToByteAdapter()
 {
 }

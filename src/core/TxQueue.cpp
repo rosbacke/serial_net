@@ -78,10 +78,14 @@ TxQueue::sendMasterPacket(const MsgEtherIf::EtherPkt& packet)
 
 void
 TxQueue::msgHostTx_sendPacket(const MsgHostIf::HostPkt& data,
-                              LocalAddress srcAddr, LocalAddress destAddr)
+                              LocalAddress destAddr)
 {
-    LOG_DEBUG << "Try to send packet from " << srcAddr << " to " << destAddr;
-    sendPacket(data, destAddr);
+    if (m_ownAddress != LocalAddress::null_addr)
+    {
+        LOG_DEBUG << "Try to send packet from " << m_ownAddress << " to "
+                  << destAddr;
+        sendPacket(data, destAddr);
+    }
 }
 
 void
@@ -93,9 +97,7 @@ TxQueue::sendReturnToken()
     m_msgEtherIf->sendMsg(packet::fromHeader(p));
 }
 
-void
-TxQueue::msgHostTx_sendAddressUpdate(LocalAddress address,
-                                     std::array<byte, 6> mac)
+void TxQueue::msgHostTx_sendMacUpdate(std::array<byte, 6> mac)
 {
     if (m_ownAddress == LocalAddress::null_addr)
     {
@@ -109,8 +111,22 @@ TxQueue::msgHostTx_sendAddressUpdate(LocalAddress address,
     p->m_type = MessageType::mac_update;
     p->m_destAddr = LocalAddress::broadcast;
     p->m_srcAddr = m_ownAddress;
-    p->m_hintAddr = address;
+    p->m_hintAddr = m_ownAddress;
     std::copy(mac.begin(), mac.end(), p->m_mac.data());
 
     m_txMsg.push_back(packet);
+}
+
+void
+TxQueue::masterStarted()
+{
+    if (m_gotDynamicAddress)
+    {
+        LOG_INFO << "Detected master start. Set own address to 0";
+        m_ownAddress = LocalAddress::null_addr;
+        if (m_addrChangeIf)
+        {
+            m_addrChangeIf->msgHostRx_newAddr(m_ownAddress);
+        }
+    }
 }

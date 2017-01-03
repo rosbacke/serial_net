@@ -25,9 +25,10 @@
 #ifndef SRC_MASTER_MASTERUTILS_H_
 #define SRC_MASTER_MASTERUTILS_H_
 
-#include "reactcpp.h"
-
 #include <functional>
+#include <memory>
+
+#include "eventwrapper/EventLoop.h"
 
 class MasterUtils
 {
@@ -44,7 +45,7 @@ class MasterUtils
 class Timer
 {
   public:
-    Timer(React::Loop& loop);
+    Timer(EventLoop& loop);
 
     // Issue a timeout in a number of sec. Vall the given function then.
     void makeTimeout(double timeout, std::function<void()> fkn);
@@ -55,9 +56,9 @@ class Timer
     void cleanTimeout();
 
   private:
-    React::Loop& m_loop;
+    EventLoop& m_loop;
 
-    std::shared_ptr<React::TimeoutWatcher> m_tokenTimeout;
+    std::shared_ptr<TimeoutWatcher> m_tokenTimeout;
 
     // Helper for delayed callback. Will derive a weak ptr to this
     // that is handed out to e.g. external timers etc.

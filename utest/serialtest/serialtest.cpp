@@ -14,15 +14,14 @@
 
 #include <libconfig.h++>
 
-#include "reactcpp.h"
-
 #include <unistd.h>
+#include "eventwrapper/EventLoop.h"
 
 using namespace gsl;
 
 struct Helper : public ByteEtherIf::RxIf
 {
-	Helper(ByteEtherIf* beIf, std::string res, 	React::MainLoop& loop)
+	Helper(ByteEtherIf* beIf, std::string res, 	EventLoop& loop)
 		 : m_ser(beIf), m_target(res), m_loop(loop)  {}
 
 
@@ -49,12 +48,12 @@ struct Helper : public ByteEtherIf::RxIf
 	ByteEtherIf* m_ser;
 	std::string m_data;
 	std::string m_target;
-	React::MainLoop& m_loop;
+	EventLoop& m_loop;
 };
 
 int main(int argc, const char *argv[])
 {
-	React::MainLoop loop;
+	EventLoop loop;
 
 	if (argc != 2)
 	{
@@ -66,7 +65,7 @@ int main(int argc, const char *argv[])
 	SerialByteEther ser(device, real.get());
 
 	loop.onTimeout(5, [&]()->bool { std::cerr << "timeout." << std::endl; loop.stop(); return false; });
-	ser.registerReadCB(loop);
+	ser.registerReadCB(&loop);
 
 	std::string str("Hello!");
 	Helper helper(&ser, str, loop);

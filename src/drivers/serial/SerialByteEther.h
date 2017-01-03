@@ -26,12 +26,11 @@
 #define SRC_DRIVERS_SERIAL_SERIALBYTEETHER_H_
 
 #include "interfaces/ByteEtherIf.h"
-#include "interfaces/RuntimeIf.h"
-#include "reactcpp.h"
 
 #include "hal/PosixFd.h"
 #include "hal/PosixIf.h"
 
+#include "../../eventwrapper/EventLoop.h"
 #include <string>
 
 class PosixFileIf;
@@ -67,7 +66,7 @@ class SerialByteEther : public ByteEtherIf
     virtual ~SerialByteEther();
 
     // Set up callback based reading when data is available.
-    void registerReadCB(React::MainLoop& mainLoop);
+    void registerReadCB(EventLoop* mainLoop);
 
     // Send a byte to the ether.
     virtual void sendBytes(const gsl::span<const gsl::byte>& bytes) override;

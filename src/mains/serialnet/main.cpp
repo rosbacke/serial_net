@@ -50,9 +50,11 @@ setupOptions(po::options_description& desc)
         ("mode", po::value<std::string>(),
          "Mode the program should work in. Allowed: std_in, std_out, std_io, "
          "socat_tun, socat_tap, tap.") //
-        ("address", po::value<int>()->default_value(255),
-         "Local address on the serial net. Value between 1 - 32") //
-        ("dest_address", po::value<int>()->default_value(255),
+        ("address", po::value<int>()->default_value(0),
+         "Local address on the serial net. Implies static address. "
+         "If not given, implies dynamic address for client only or static "
+         "address 1 for master client. Value between 1 - 32") //
+        ("dest_address", po::value<int>()->default_value(0),
          "For mode ipipe. Address where to send incoming data to. Value "
          "between 1 - 32") //
         ("master,m",
@@ -66,6 +68,12 @@ setupOptions(po::options_description& desc)
          "Dump all serial packets to a named pipe, suitable for test2pcap") //
         ("endwithmaster",
          "Quit the client if we receive a 'master_stop' message.") //
+        ("on-if-up", po::value<std::string>()->default_value(""),
+         "Give a command to run using 'system' call when the interface comes "
+         "up.") //
+        ("on-if-down", po::value<std::string>()->default_value(""),
+         "Give a command to run using 'system' call when the interface goes "
+         "down.") //
         ;
 }
 

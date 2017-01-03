@@ -50,15 +50,6 @@ class ClientAddress
     void setupUniqueId();
 
   private:
-    enum class AddrState
-    {
-        requireDynamic,
-        gotDynamic,
-        gotStatic
-    };
-
-    LocalAddress m_addr;
-    AddrState m_addrState;
     packet::UniqueId m_uniqueId;
     TxQueue* m_txQueue;
 };

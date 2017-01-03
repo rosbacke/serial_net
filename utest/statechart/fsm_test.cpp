@@ -25,17 +25,28 @@ public:
 	TestEventId m_id;
 };
 
-enum class StateId
-{
-	state1,
-	state2,
-	state3,
-};
-
 static int testData = -1;
 
-class MyTestFsm : public FsmBase<MyTestFsm, TestEvent, StateId>
+
+class TestStates
 {
+public:
+	enum class StateId
+	{
+		state1,
+		state2,
+		state3,
+	};
+
+	using Event = TestEvent;
+
+
+};
+
+
+class MyTestFsm : public FsmBase<MyTestFsm, TestStates>
+{
+
 public:
 	MyTestFsm();
 
@@ -120,6 +131,7 @@ MyTestFsm::MyTestFsm()
 
 TEST(StateChart, testStateChart)
 {
+	using StateId = TestStates::StateId;
 	cout << "start" << endl;
 	MyTestFsm myFsm;
 	cout << "do 2" << endl;

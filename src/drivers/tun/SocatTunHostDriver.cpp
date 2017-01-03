@@ -25,11 +25,12 @@
 #include "SocatTunHostDriver.h"
 #include "hal/PosixIf.h"
 #include "utility/Log.h"
+#include <unistd.h>
 
 using gsl::to_byte;
 
-SocatTunHostDriver::SocatTunHostDriver(LocalAddress myAddr, PosixFileIf* pfi)
-    : m_myAddr(myAddr), m_txIf(nullptr), m_posixFileIf(pfi)
+SocatTunHostDriver::SocatTunHostDriver(PosixFileIf* pfi)
+    : m_txIf(nullptr), m_posixFileIf(pfi)
 {
 }
 
@@ -38,7 +39,7 @@ SocatTunHostDriver::~SocatTunHostDriver()
 }
 
 void
-SocatTunHostDriver::startTransfer(MsgHostIf* txIf, React::Loop& loop)
+SocatTunHostDriver::startTransfer(MsgHostIf* txIf, EventLoop& loop)
 {
     m_txIf = txIf;
     setupCallback(loop);
@@ -78,7 +79,6 @@ void
 SocatTunHostDriver::doRead(int fd)
 {
     int readlen;
-    LocalAddress srcAddr = LocalAddress::null_addr;
     LocalAddress destAddr = LocalAddress::null_addr;
     switch (m_readType)
     {
@@ -111,7 +111,6 @@ SocatTunHostDriver::doRead(int fd)
         const Ipv4Header* ipv4Header = &tunIpv4Header->m_ipv4;
 
         int readMaxLen = m_rxTunPacket.size() - sizeof(TunIpv4Header);
-        srcAddr = toLocalAddress(to_byte(ipv4Header->m_srcAddr[3]));
         destAddr = toLocalAddress(to_byte(ipv4Header->m_destAddr[3]));
 
         void* start = m_rxTunPacket.data() + sizeof(TunIpv4Header);
@@ -128,7 +127,7 @@ SocatTunHostDriver::doRead(int fd)
         {
             MsgHostIf::HostPkt hostPkt(m_rxTunPacket.data(),
                                        m_rxTunPacket.size());
-            m_txIf->msgHostTx_sendPacket(hostPkt, srcAddr, destAddr);
+            m_txIf->msgHostTx_sendPacket(hostPkt, destAddr);
         }
         break;
     }
@@ -136,7 +135,7 @@ SocatTunHostDriver::doRead(int fd)
 }
 
 void
-SocatTunHostDriver::setupCallback(React::Loop& mainLoop)
+SocatTunHostDriver::setupCallback(EventLoop& mainLoop)
 {
     // we'd like to be notified when input is available on stdin
     mainLoop.onReadable(STDIN_FILENO, [this]() -> bool {

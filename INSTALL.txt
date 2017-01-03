@@ -4,9 +4,7 @@ A number of prerequisites are needed. There is a tools/setup_dependencies.sh
 script that will install most of them on an .deb system. It is tested
 on an Ubuntu 16.04 system.
 
-Note: The script will download and build the react-cpp library
-(no .deb file is available for this). It will also request sudo priveliges to
-directly install the library and include files under /usr/lib and /usr/include.
+Note: The install script will request sudo privileges.
 If you do not want this, don't run the script. Modify it to your liking.
 
 To build the utility. Unpack the source. Create a parallel
@@ -20,3 +18,4 @@ make -j 4
 to run the utility:
 src/mains/serialnet/serialnet --usage
 
+Check out start scripts : tools/run_tap_master.sh, tools/run_tap_client.sh

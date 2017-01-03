@@ -58,10 +58,10 @@ SerialByteEther::~SerialByteEther()
 }
 
 void
-SerialByteEther::registerReadCB(React::MainLoop& mainLoop)
+SerialByteEther::registerReadCB(EventLoop* mainLoop)
 {
     // we'd like to be notified when input is available on stdin
-    mainLoop.onReadable(m_fd.get(), [this]() -> bool {
+    mainLoop->onReadable(m_fd.get(), [this]() -> bool {
         readSerial();
 
         // return true, so that we also return future read events

@@ -25,15 +25,16 @@
 #ifndef SRC_MASTER_EVENT_H_
 #define SRC_MASTER_EVENT_H_
 
+#include <boost/variant.hpp>
 #include <string>
+
+#include <interfaces/SerialProtocol.h>
 
 class Event
 {
   public:
     enum class Id
     {
-        entry,
-        exit,
         init,
         rx_grant_token,
         rx_client_packet,
@@ -51,6 +52,8 @@ class Event
     static std::string toString(Id id);
 
     Id m_id;
+
+    boost::variant<packet::AddressRequest> eventData;
 };
 
 #endif /* SRC_MASTER_EVENT_H_ */

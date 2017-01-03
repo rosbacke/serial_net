@@ -10,14 +10,14 @@ sudo apt-get update
 sudo apt-get install cmake ninja-build make libboost-all-dev libconfig++-dev git git-gui gitk socat libev-dev libc-ares-dev daemon
 
 # Get and build REACT-CPP
-CURR_PWD=`pwd`
-git clone https://github.com/CopernicaMarketingSoftware/REACT-CPP.git ${GIT_ROOT_PATH}/../reactcpp
-cd ${GIT_ROOT_PATH}/../reactcpp
-make
-sudo make install
-cd $CURR_PWD
+#CURR_PWD=`pwd`
+#git clone https://github.com/CopernicaMarketingSoftware/REACT-CPP.git ${GIT_ROOT_PATH}/../reactcpp
+#cd ${GIT_ROOT_PATH}/../reactcpp
+#make
+#sudo make install
+#cd $CURR_PWD
 
-git clone https://github.com/Microsoft/GSL.git ${GIT_ROOT_PATH}/../GSL
+#git clone https://github.com/Microsoft/GSL.git ${GIT_ROOT_PATH}/../GSL
 
 mkdir ${GIT_ROOT_PATH}/../serial_net-build
 cd ${GIT_ROOT_PATH}/../serial_net-build
@@ -25,4 +25,3 @@ cmake -G Ninja ../serial_net
 ninja -j 4
 
 cd $CURR_PWD
-

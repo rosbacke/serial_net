@@ -44,14 +44,17 @@
 #include "hal/PosixIf.h"
 #include "utility/Log.h"
 
-TapHostDriver::TapHostDriver(LocalAddress myAddr, AddressCache* ac,
-                             PosixFileIf* pfi, PosixTunTapIf* ptti)
-    : m_tap(myAddr, ac, pfi), m_tun_fd(pfi), m_pfi(pfi), m_ptti(ptti)
+TapHostDriver::TapHostDriver(AddressCache* ac, PosixFileIf* pfi,
+                             PosixTunTapIf* ptti, const std::string& on_if_up,
+                             const std::string& on_if_down)
+    : m_tap(ac, pfi), m_tun_fd(pfi), m_pfi(pfi), m_ptti(ptti),
+      m_on_if_up(on_if_up), m_on_if_down(on_if_down), m_ifUp(false)
 {
 }
 
 TapHostDriver::~TapHostDriver()
 {
+    setTapIfUpDown(m_ptti, false);
 }
 
 int
@@ -90,16 +93,18 @@ TapHostDriver::tun_alloc(std::string& dev, unsigned tunFlags)
 }
 
 void
-TapHostDriver::startTransfer(MsgHostIf* txIf, React::Loop& loop)
+TapHostDriver::startTransfer(MsgHostIf* txIf, EventLoop& loop)
 {
     LOG_DEBUG << "startTransfer done";
     m_tap.setTx(txIf);
     setupCallback(loop);
     txIf->setRxHandler(this);
+    txIf->setAddrUpdateHandler(this);
+    msgHostRx_newAddr(txIf->msgHostTx_clientAddress());
 }
 
 void
-TapHostDriver::setupCallback(React::Loop& mainLoop)
+TapHostDriver::setupCallback(EventLoop& mainLoop)
 {
     std::string tun_name("tap0");
 
@@ -118,4 +123,67 @@ TapHostDriver::setupCallback(React::Loop& mainLoop)
         // return true, so that we also return future read events
         return true;
     });
+}
+
+void
+TapHostDriver::msgHostRx_newAddr(LocalAddress addr)
+{
+
+    const bool newIfUp = (addr != LocalAddress::null_addr);
+    if (newIfUp != m_ifUp)
+    {
+        setTapIfUpDown(m_ptti, newIfUp);
+        if (newIfUp && m_on_if_up != "")
+        {
+            m_pfi->system(m_on_if_up.c_str());
+        }
+        else if (!newIfUp && m_on_if_down != "")
+        {
+            m_pfi->system(m_on_if_down.c_str());
+        }
+        m_ifUp = newIfUp;
+    }
+}
+
+void
+TapHostDriver::setTapIfUpDown(PosixTunTapIf* posix, bool up)
+{
+    int fd = ::socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+    struct ifreq ethreq;
+
+    // See: 'man 7 netdevice' for details.
+    struct ifreq req;
+    int err;
+
+    memset(&req, 0, sizeof(ethreq));
+
+    /* set the name of the interface we wish to check */
+    strncpy(req.ifr_name, "tap0", IFNAMSIZ);
+
+    LOG_INFO << "Try ioctl_SIOCGIFFLAGS : fd:" << fd;
+
+    err = posix->ioctl_SIOCGIFFLAGS(fd, (void*)&req);
+    if (err == -1)
+    {
+        LOG_ERROR << "Error with ioctl_SIOCGIFFLAGS : " << ::strerror(errno);
+        throw std::runtime_error("Failed getting tap interface flags.");
+    }
+    auto oldVal = req.ifr_ifru.ifru_flags;
+    if (up)
+    {
+        req.ifr_ifru.ifru_flags |= IFF_UP;
+    }
+    else
+    {
+        req.ifr_ifru.ifru_flags &= ~IFF_UP;
+    }
+    if (req.ifr_ifru.ifru_flags != oldVal)
+    {
+        err = posix->ioctl_SIOCSIFFLAGS(fd, (void*)&req);
+        if (err == -1)
+        {
+            throw std::runtime_error("Failed setting tap interface flags.");
+        }
+    }
 }

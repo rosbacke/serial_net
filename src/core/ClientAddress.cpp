@@ -30,9 +30,7 @@
 
 #include <random>
 
-ClientAddress::ClientAddress(TxQueue* txQueue)
-    : m_addr(LocalAddress::null_addr), m_addrState(AddrState::requireDynamic),
-      m_txQueue(txQueue)
+ClientAddress::ClientAddress(TxQueue* txQueue) : m_txQueue(txQueue)
 {
     setupUniqueId();
 }
@@ -44,7 +42,7 @@ ClientAddress::~ClientAddress()
 void
 ClientAddress::rxDiscoveryPacket(const packet::AddressDiscovery& packet)
 {
-    if (m_addrState != AddrState::requireDynamic)
+    if (m_txQueue->msgHostTx_clientAddress() != LocalAddress::null_addr)
     {
         return;
     }
@@ -59,31 +57,11 @@ ClientAddress::rxDiscoveryPacket(const packet::AddressDiscovery& packet)
 void
 ClientAddress::rxAddrReplyPacket(const packet::AddressReply& packet)
 {
-    if (m_addrState != AddrState::requireDynamic)
+    if (packet.m_uniqueId == m_uniqueId)
     {
-        return;
+        m_txQueue->setAddress(packet.m_assigned);
     }
-    if (packet.m_uniqueId != m_uniqueId)
-    {
-        return;
-    }
-    m_addr = packet.m_assigned;
-    m_addrState = AddrState::gotDynamic;
     // TODO: Set up timeouts, invalidation etc.
-}
-
-LocalAddress
-ClientAddress::getAddr() const
-{
-    switch (m_addrState)
-    {
-    case AddrState::gotStatic:
-    case AddrState::gotDynamic:
-        return m_addr;
-    case AddrState::requireDynamic:
-        return LocalAddress::null_addr;
-    }
-    return LocalAddress::null_addr;
 }
 
 void

@@ -23,3 +23,140 @@
  */
 
 #include "StateChart.h"
+
+void
+FsmSetupBase::addStateBase(int stateId, int parentId, size_t size,
+                           CreateFkn fkn)
+{
+    int level = 0;
+    if (stateId != parentId)
+    {
+        auto parent = findState(parentId);
+        level = parent->m_level + 1;
+    }
+    auto t = StateInfo(stateId, parentId, level, size, fkn);
+    m_states.emplace_back(t);
+    if (m_maxLevel < level)
+    {
+        m_maxLevel = level;
+    }
+}
+
+void
+FsmBaseSupport::prepareTransition(FsmBaseBase* fbb)
+{
+    m_hsm = fbb;
+    while (m_stateUpdate)
+    {
+        auto i = m_setup.findState(m_nextState);
+        if (i)
+        {
+            m_stateUpdate = false;
+            doTransition(i);
+        }
+    }
+}
+
+void
+FsmBaseSupport::doTransition(const StateInfo* nextInfo)
+{
+    assert(nextInfo != nullptr);
+    populateNextInfos(nextInfo);
+    assert(!m_nextInfos.empty());
+    int bottomLevel = 0;
+    if (!m_currentInfos.empty())
+    {
+        bottomLevel = findFirstThatDiffer();
+    }
+    doExit(bottomLevel);
+    doEntry(nextInfo->m_level);
+}
+
+void
+FsmBaseSupport::populateNextInfos(const StateInfo* nextInfo)
+{
+    auto si = nextInfo;
+    auto level = si->m_level;
+    m_nextInfos.resize(level + 1);
+    m_nextInfos[level] = si;
+    while (level > 0)
+    {
+        si = m_setup.findState(si->m_parentId);
+        level = si->m_level;
+        m_nextInfos[level] = si;
+    }
+}
+
+size_t
+FsmBaseSupport::findFirstThatDiffer()
+{
+    // Handle the case for transition to self.
+    if (m_currentInfos.back() == m_nextInfos.back())
+    {
+        // Do exit/entry.
+        return m_currentInfos.back()->m_level;
+    }
+    size_t level = 0;
+    const auto srcSize = m_currentInfos.size();
+    const auto dstSize = m_nextInfos.size();
+    while (level < srcSize && level < dstSize &&
+           m_currentInfos[level] == m_nextInfos[level])
+    {
+        level++;
+    }
+    return level;
+}
+
+void
+FsmBaseSupport::cleanup()
+{
+    // Clean up states in the correct order.
+    while (!m_stackFrames.empty())
+    {
+        m_stackFrames.pop_back();
+    }
+}
+
+void
+FsmBaseSupport::doExit(size_t bl)
+{
+    const auto bottomLevel = bl;
+    while (m_currentInfos.size() > bottomLevel)
+    {
+        m_currentInfos.pop_back();
+        m_stackFrames[m_currentInfos.size()].m_activeState.reset(nullptr);
+    }
+}
+void
+FsmBaseSupport::doEntry(size_t targetLevel)
+{
+    const auto dstLevel = m_nextInfos.size();
+    while (m_currentInfos.size() != dstLevel)
+    {
+        auto level = m_currentInfos.size();
+        auto newState = m_nextInfos[level];
+        auto& frame = m_stackFrames[level];
+        auto& storeVec = frame.m_stateStorage;
+        if (storeVec.size() < newState->m_stateSize)
+        {
+            storeVec.resize(newState->m_stateSize);
+        }
+        frame.m_activeState.reset(newState->m_maker(storeVec.data(), m_hsm));
+        m_currentInfos.push_back(newState);
+    }
+}
+void
+FsmBaseSupport::transition(int id)
+{
+    m_nextState = id;
+    m_stateUpdate = true;
+}
+
+void
+FsmBaseSupport::setStartState(int id, FsmBaseBase* hsm)
+{
+    m_stackFrames.resize(m_setup.m_maxLevel + 1);
+    m_nextState = static_cast<int>(id);
+    m_stateUpdate = true;
+    prepareTransition(hsm);
+}

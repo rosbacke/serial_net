@@ -25,6 +25,8 @@
 #ifndef SRC_MASTER_ADDRESSLINE_H_
 #define SRC_MASTER_ADDRESSLINE_H_
 
+#include "interfaces/SerialProtocol.h"
+
 /**
  * One row in the Addresses store. Represent a single local address.
  */
@@ -36,10 +38,11 @@ class AddressLine
         active,    // Have recently transmitted packets. Might have more.
         idle,      // Have recently declined the token. Well behaved.
         badClient, // Have failed to return token and let the timeout pass.
-        free       // This address is currently unallocated.
+        free       // This address does not respond to token request.
     };
 
-    AddressLine(){};
+    AddressLine(LocalAddress addr, State s = State::idle, bool dynamic = false)
+        : m_state(s), m_address(addr), m_isDynamic(dynamic){};
     ~AddressLine(){};
 
     void setInit(State state)
@@ -47,9 +50,19 @@ class AddressLine
         m_state = state;
     }
 
+    LocalAddress getAddr() const
+    {
+        return m_address;
+    }
+
     State getState() const
     {
         return m_state;
+    }
+
+    bool removeDynamic() const
+    {
+        return m_isDynamic && m_state == State::free;
     }
 
     void setState(State st)
@@ -69,6 +82,8 @@ class AddressLine
   private:
     State m_state = State::idle;
     int m_badCount = 0;
+    LocalAddress m_address;
+    bool m_isDynamic = false;
 };
 
 #endif /* SRC_MASTER_ADDRESSLINE_H_ */

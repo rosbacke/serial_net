@@ -25,12 +25,11 @@
 #ifndef SRC_DRIVERS_STDSTREAM_STDSTREAMPIPEHOSTDRIVER_H_
 #define SRC_DRIVERS_STDSTREAM_STDSTREAMPIPEHOSTDRIVER_H_
 
+#include "eventwrapper/EventLoop.h"
 #include "interfaces/MsgHostIf.h"
 #include "interfaces/SerialProtocol.h"
-
 #include <iostream>
 #include <iterator>
-#include <reactcpp.h>
 
 class PosixFileIf;
 
@@ -43,7 +42,7 @@ class StdstreamPipeHostDriver : public MsgHostIf::RxIf
     void startStdout(LocalAddress rxAddress);
 
     void startStdin(LocalAddress destAddr, MsgHostIf* txIf,
-                    React::MainLoop& mainLoop);
+                    EventLoop& mainLoop);
 
     /**
      * Called when a packet was received from the serial net.
@@ -52,7 +51,7 @@ class StdstreamPipeHostDriver : public MsgHostIf::RxIf
                         LocalAddress destAddr) override;
 
   private:
-    void setupCallback(React::MainLoop& mainLoop);
+    void setupCallback(EventLoop& mainLoop);
 
     // My address in the network.
     LocalAddress m_myAddr;

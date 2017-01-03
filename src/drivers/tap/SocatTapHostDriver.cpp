@@ -27,13 +27,13 @@
 #include "utility/Log.h"
 
 #include <array>
+#include <unistd.h>
 
 using std::array;
 using namespace gsl;
 
-SocatTapHostDriver::SocatTapHostDriver(LocalAddress myAddr, AddressCache* ac,
-                                       PosixFileIf* pfi)
-    : m_tap(myAddr, ac, pfi)
+SocatTapHostDriver::SocatTapHostDriver(AddressCache* ac, PosixFileIf* pfi)
+    : m_tap(ac, pfi)
 {
 }
 
@@ -42,7 +42,14 @@ SocatTapHostDriver::~SocatTapHostDriver()
 }
 
 void
-SocatTapHostDriver::startTransfer(MsgHostIf* txIf, React::Loop& loop)
+SocatTapHostDriver::packetReceived(const ByteVec& data, LocalAddress srcAddr,
+                                   LocalAddress destAddr)
+{
+    m_tap.packetReceived(STDOUT_FILENO, data, srcAddr, destAddr);
+}
+
+void
+SocatTapHostDriver::startTransfer(MsgHostIf* txIf, EventLoop& loop)
 {
     m_tap.setTx(txIf);
     setupCallback(loop);
@@ -50,7 +57,7 @@ SocatTapHostDriver::startTransfer(MsgHostIf* txIf, React::Loop& loop)
 }
 
 void
-SocatTapHostDriver::setupCallback(React::Loop& mainLoop)
+SocatTapHostDriver::setupCallback(EventLoop& mainLoop)
 {
     // we'd like to be notified when input is available on stdin
     mainLoop.onReadable(STDIN_FILENO, [this]() -> bool {

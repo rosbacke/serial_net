@@ -16,10 +16,10 @@
  */
 
 /*
- * RuntimeIf.cpp
+ * SignalWatcher.cpp
  *
- *  Created on: 30 juli 2016
+ *  Created on: 3 jan. 2017
  *      Author: mikaelr
  */
 
-#include "RuntimeIf.h"
+#include "SignalWatcher.h"

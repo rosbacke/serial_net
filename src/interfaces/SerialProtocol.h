@@ -97,6 +97,12 @@ toLocalAddress(gsl::byte byte)
     return static_cast<LocalAddress>(byte);
 }
 
+inline LocalAddress
+toLocalAddress(int byte)
+{
+    return static_cast<LocalAddress>(byte);
+}
+
 /**
  * Protocol structures describing packet headers. Note:
  * Each element _must_ be of a Type where sizeof(Type)==1.

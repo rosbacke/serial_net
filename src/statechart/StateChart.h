@@ -63,38 +63,30 @@
 #include <memory>
 #include <vector>
 
+#include <cassert>
 #include <iostream>
 
-class StateBaseBase
-{
-  public:
-    virtual ~StateBaseBase()
-    {
-    }
-};
+#include "utility/Log.h"
 
 /**
- * Base class for all state classes. Templated on the HSM to allow
- * passing the correct type when accessing the HSM reference from within
- * the state class.
+ * Base class for all state classes. Templated on the HSM.
+ * Allow customization of the HSM functions.
+ * Supplies a number of helper function to be available in state context.
  */
 template <class HSM>
-class StateBase : public StateBaseBase
+class StateBase
 {
   protected:
     StateBase(HSM& hsm) : m_hsm(&hsm)
     {
     }
 
-    using Event = typename HSM::Event;
     using StateId = typename HSM::StateId;
 
   public:
-    virtual bool event(const Event& ev) = 0;
-
     void transition(StateId id)
     {
-        m_hsm->transition(id);
+        m_hsm->transition(static_cast<int>(id));
     }
 
     HSM& hsm()
@@ -102,37 +94,44 @@ class StateBase : public StateBaseBase
         return *m_hsm;
     }
 
-    StateBase& base()
-    {
-        return *m_hsm->base(this);
-    }
-
   private:
     HSM* m_hsm;
 };
 
-class FsmBaseBase
+class FsmBaseBase;
+
+/**
+ * Base for 'StateModel' class. Classes that keep a state as a member and
+ * introduce
+ * inheritance for event passing.
+ */
+class ModelBase
 {
+  public:
+    virtual ~ModelBase()
+    {
+    }
 };
 
-template <class MyFsm, class Ev, typename Stateid>
-class FsmBase;
-
+/**
+ * Helper class. Keeps track of all state information objects for at particular
+ * HSM.
+ */
 class FsmSetupBase
 {
   public:
     struct PlacementDestroyer
     {
-        void operator()(StateBaseBase* p)
+        void operator()(ModelBase* p)
         {
-            p->~StateBaseBase();
+            p->~ModelBase();
         }
     };
 
-    using UniquePtr = std::unique_ptr<StateBaseBase, PlacementDestroyer>;
+    using UniquePtr = std::unique_ptr<ModelBase, PlacementDestroyer>;
 
     using CreateFkn =
-        std::function<StateBaseBase*(char* store, FsmBaseBase* hsmbase)>;
+        std::function<ModelBase*(char* store, FsmBaseBase* hsmbase)>;
 
     struct LevelData
     {
@@ -144,10 +143,10 @@ class FsmSetupBase
     {
         template <class StateId>
         StateInfo(StateId id, StateId parentId, int level, size_t stateSize,
-                  const CreateFkn& fkn)
+                  const CreateFkn& fkn, const std::string& name = "")
             : m_id(static_cast<int>(id)),
               m_parentId(static_cast<int>(parentId)), m_level(level),
-              m_stateSize(stateSize), m_maker(fkn)
+              m_stateSize(stateSize), m_name(name), m_maker(fkn)
         {
         }
 
@@ -155,6 +154,7 @@ class FsmSetupBase
         int m_parentId;
         int m_level;
         size_t m_stateSize;
+        std::string m_name;
         CreateFkn m_maker;
     };
 
@@ -173,21 +173,7 @@ class FsmSetupBase
         return findState(static_cast<int>(id));
     }
 
-    void addStateBase(int stateId, int parentId, size_t size, CreateFkn fkn)
-    {
-        int level = 0;
-        if (stateId != parentId)
-        {
-            auto parent = findState(parentId);
-            level = parent->m_level + 1;
-        }
-        auto t = StateInfo(stateId, parentId, level, size, fkn);
-        m_states.emplace_back(t);
-        if (m_maxLevel < level)
-        {
-            m_maxLevel = level;
-        }
-    }
+    void addStateBase(int stateId, int parentId, size_t size, CreateFkn fkn);
 
     std::vector<StateInfo> m_states;
     int m_maxLevel = 0;
@@ -197,7 +183,7 @@ class FsmBaseSupport
 {
   public:
     using StateInfo = FsmSetupBase::StateInfo;
-    FsmBaseSupport(FsmBaseBase* hsm) : m_hsm(hsm)
+    FsmBaseSupport() : m_hsm(nullptr)
     {
     }
 
@@ -205,104 +191,26 @@ class FsmBaseSupport
     {
     }
 
-    void prepareTransition()
-    {
-        while (m_stateUpdate)
-        {
-            auto i = m_setup.findState(m_nextState);
-            if (i)
-            {
-                m_stateUpdate = false;
-                doTransition(i);
-            }
-        }
-    }
+    void cleanup();
 
-    void doTransition(const StateInfo* nextInfo)
-    {
-        populateNextInfos(nextInfo);
-        int bottomLevel = findFirstThatDiffer();
-        doExit(bottomLevel);
-        doEntry(nextInfo->m_level);
-    }
+    void transition(int id);
 
-    void populateNextInfos(const StateInfo* nextInfo)
-    {
-        auto si = nextInfo;
-        auto level = si->m_level;
-        m_nextInfos.resize(level + 1);
-        m_nextInfos[level] = si;
-        while (level > 0)
-        {
-            si = m_setup.findState(si->m_parentId);
-            level = si->m_level;
-            m_nextInfos[level] = si;
-        }
-    }
+    void setStartState(int id, FsmBaseBase* hsm);
 
-    size_t findFirstThatDiffer()
-    {
-        size_t level = 0;
-        const auto srcSize = m_currentInfos.size();
-        const auto dstSize = m_nextInfos.size();
-        while (level < srcSize && level < dstSize &&
-               m_currentInfos[level] == m_nextInfos[level])
-        {
-            level++;
-        }
-        return level;
-    }
+    void prepareTransition(FsmBaseBase* fbb);
 
-    void cleanup()
-    {
-        // Clean up states in the correct order.
-        while (!m_stackFrames.empty())
-        {
-            m_stackFrames.pop_back();
-        }
-    }
+  private:
+    void doTransition(const StateInfo* nextInfo);
 
-    void doExit(size_t bl)
-    {
-        const auto bottomLevel = bl;
-        while (m_currentInfos.size() > bottomLevel)
-        {
-            m_currentInfos.pop_back();
-            m_stackFrames[m_currentInfos.size()].m_activeState.reset(nullptr);
-        }
-    }
-    void doEntry(size_t targetLevel)
-    {
-        const auto dstLevel = m_nextInfos.size();
-        while (m_currentInfos.size() != dstLevel)
-        {
-            auto level = m_currentInfos.size();
-            auto newState = m_nextInfos[level];
-            auto& frame = m_stackFrames[level];
-            auto& storeVec = frame.m_stateStorage;
-            if (storeVec.size() < newState->m_stateSize)
-            {
-                storeVec.resize(newState->m_stateSize);
-            }
-            frame.m_activeState.reset(
-                newState->m_maker(storeVec.data(), m_hsm));
-            m_currentInfos.push_back(newState);
-        }
-    }
-    void transition(int id)
-    {
-        m_nextState = static_cast<int>(id);
-        m_stateUpdate = true;
-    }
+    void populateNextInfos(const StateInfo* nextInfo);
 
-    void setStartState(int id)
-    {
-        m_stackFrames.resize(m_setup.m_maxLevel + 1);
-        m_nextState = static_cast<int>(id);
-        m_stateUpdate = true;
-        prepareTransition();
-    }
+    size_t findFirstThatDiffer();
 
+    void doExit(size_t bl);
+
+    void doEntry(size_t targetLevel);
+
+  public:
     std::vector<FsmSetupBase::LevelData> m_stackFrames;
     std::vector<const StateInfo*> m_currentInfos;
 
@@ -316,32 +224,68 @@ class FsmBaseSupport
     FsmBaseBase* m_hsm = nullptr;
 };
 
-/**
- * Base class for the Fsm. Contain all the Support data and functions that
- * should be
- * accessible from the HSM.
- */
-template <class MyFsm, class Ev, typename Stateid>
-class FsmBase : public FsmBaseBase
+class FsmBaseBase
 {
-  public:
-    // using EventId = Ev;
-    using Event = Ev;
-    using StateId = Stateid;
-    using FSetup = FsmSetupBase;
-    using StateInfo = FsmSetupBase::StateInfo;
-
-    FsmBase() : m_base(this)
+  protected:
+    FsmBaseBase() : m_base()
     {
     }
 
-    ~FsmBase()
+    ~FsmBaseBase()
     {
         m_base.cleanup();
     }
 
-    void postEvent(const Ev& ev)
+    FsmBaseSupport m_base;
+
+  public:
+    /**
+     * Call to indicate a transition to a new state after this
+     * event handling call has ended. Will call suitable exit/entry
+     * handlers.
+     */
+    void transition(int id)
     {
+        m_base.transition(id);
+    }
+};
+
+template <class Event>
+class EventInterface : public ModelBase
+{
+  public:
+    virtual ~EventInterface()
+    {
+    }
+    virtual bool event(const Event& ev) = 0;
+};
+
+template <class Fsm, class St, class Event>
+class StateModel : public EventInterface<Event>
+{
+  public:
+    StateModel(FsmBaseBase* fsm) : m_state(*static_cast<Fsm*>(fsm))
+    {
+    }
+    bool event(const Event& event) override
+    {
+        return m_state.event(event);
+    }
+    virtual ~StateModel()
+    {
+    }
+
+  private:
+    St m_state;
+};
+
+template <class Event>
+class FsmBaseEvent : public FsmBaseBase
+{
+  public:
+    void postEvent(const Event& ev)
+    {
+        // LOG_DEBUG << "Post event:" << int(ev.m_id);
         bool empty = m_eventQueue.empty();
         m_eventQueue.push(ev);
         if (empty)
@@ -357,13 +301,56 @@ class FsmBase : public FsmBaseBase
         }
     }
 
+    static bool emitEvent(ModelBase* sbb, const Event& ev)
+    {
+        return static_cast<EventInterface<Event>*>(sbb)->event(ev);
+    }
+
+    void processEvent(const Event& ev)
+    {
+        bool eventHandled = false;
+        int level = m_base.m_currentInfos.size();
+        if (level == 0)
+        {
+            return;
+        }
+        do
+        {
+            level--;
+            auto activeState = m_base.m_stackFrames[level].m_activeState.get();
+            eventHandled = emitEvent(activeState, ev);
+
+        } while (!eventHandled && level > 0);
+        m_base.prepareTransition(this);
+    }
+
+  private:
+    VecQueue<Event> m_eventQueue;
+};
+
+/**
+ * Base class based on the state description type. This level
+ * is suitable for declaring a static FsmSetupBase. (To be implemented.)
+ */
+template <class St>
+class FsmBaseSt : public FsmBaseEvent<typename St::Event>
+{
+};
+
+template <class MyFsm, class St>
+class FsmBase : public FsmBaseSt<St>
+{
+  public:
+    using StateId = typename St::StateId;
+    using Event = typename St::Event;
+
     /**
      * Set start state and perform initial jump to that state.
      * After this, it is legal to send events into the HSM.
      */
     void setStartState(StateId id)
     {
-        m_base.setStartState(static_cast<int>(id));
+        FsmBaseBase::m_base.setStartState(static_cast<int>(id), this);
     }
 
   protected:
@@ -392,50 +379,14 @@ class FsmBase : public FsmBaseBase
     template <class State, StateId stateId, StateId parentId>
     void addState()
     {
-        auto fkn = [&](char* store, FsmBaseBase* hsm) -> StateBaseBase* {
-            return static_cast<StateBase<MyFsm>*>(
-                new (store) State(*static_cast<MyFsm*>(hsm)));
+        auto fkn = [&](char* store, FsmBaseBase* hsm) -> ModelBase* {
+            return static_cast<ModelBase*>(
+                new (store) StateModel<MyFsm, State, Event>(hsm));
         };
-        m_base.m_setup.addStateBase(static_cast<int>(stateId),
-                                    static_cast<int>(parentId), sizeof(State),
-                                    fkn);
+        auto size = sizeof(StateModel<MyFsm, State, Event>);
+        FsmBaseBase::m_base.m_setup.addStateBase(
+            static_cast<int>(stateId), static_cast<int>(parentId), size, fkn);
     }
-
-  private:
-    // Allow  states to do transition.
-    friend class StateBase<MyFsm>;
-
-    /**
-     * Call to indicate a transition to a new state after this
-     * event handling call has ended. Will call suitable exit/entry
-     * handlers.
-     */
-    void transition(StateId id)
-    {
-        m_base.transition(static_cast<int>(id));
-    }
-
-    void processEvent(const Ev& ev)
-    {
-        bool eventHandled = false;
-        int level = m_base.m_currentInfos.size();
-        if (level == 0)
-        {
-            return;
-        }
-        do
-        {
-            level--;
-            auto activeState = m_base.m_stackFrames[level].m_activeState.get();
-            eventHandled =
-                static_cast<StateBase<MyFsm>*>(activeState)->event(ev);
-
-        } while (!eventHandled && level > 0);
-        m_base.prepareTransition();
-    }
-
-    FsmBaseSupport m_base;
-    VecQueue<Ev> m_eventQueue;
 };
 
 #endif /* SRC_STATECHART_STATECHART_H_ */

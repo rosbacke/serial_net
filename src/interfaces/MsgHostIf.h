@@ -49,13 +49,13 @@ class MsgHostIf
     };
 
     // The core implements this function.
-    virtual void msgHostTx_sendPacket(const HostPkt& data, LocalAddress srcAddr,
+    virtual void msgHostTx_sendPacket(const HostPkt& data,
                                       LocalAddress destAddr) = 0;
 
-    virtual void msgHostTx_sendAddressUpdate(LocalAddress address,
-                                             std::array<gsl::byte, 6> mac) = 0;
+    virtual void msgHostTx_sendMacUpdate(std::array<gsl::byte, 6> mac) = 0;
 
-    MsgHostIf(){};
+    // Return the currently assigned local address.
+    virtual LocalAddress msgHostTx_clientAddress() const = 0;
 
     class RxIf
     {
@@ -71,6 +71,17 @@ class MsgHostIf
      * Inform the driver where it is supposed to send its packets.
      */
     virtual void setRxHandler(RxIf* rxIf) = 0;
+
+    /**
+      * Interface for receiving notifications when the local address changes.
+      */
+    class AddrChange
+    {
+      public:
+        virtual void msgHostRx_newAddr(LocalAddress addr) = 0;
+    };
+
+    virtual void setAddrUpdateHandler(AddrChange* addrUpdateHandler) = 0;
 
     virtual ~MsgHostIf(){};
 };

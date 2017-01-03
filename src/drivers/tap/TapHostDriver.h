@@ -26,21 +26,21 @@
 #define SRC_DRIVERS_TAP_TAPHOSTDRIVER_H_
 
 #include "TapProtocol.h"
+#include "eventwrapper/EventLoop.h"
 #include "hal/PosixFd.h"
 #include "interfaces/MsgHostIf.h"
-#include "reactcpp.h"
 
 class PosixFileIf;
 class PosixTunTapIf;
 
-class TapHostDriver : public MsgHostIf::RxIf
+class TapHostDriver : public MsgHostIf::RxIf, public MsgHostIf::AddrChange
 {
   public:
-    TapHostDriver(LocalAddress myAddr, AddressCache* ac, PosixFileIf* pfi,
-                  PosixTunTapIf* ptti);
+    TapHostDriver(AddressCache* ac, PosixFileIf* pfi, PosixTunTapIf* ptti,
+                  const std::string& on_if_up, const std::string& on_if_down);
     virtual ~TapHostDriver();
 
-    void startTransfer(MsgHostIf* txIf, React::Loop& loop);
+    void startTransfer(MsgHostIf* txIf, EventLoop& loop);
 
     /**
      * Called when a packet was received from the serial net.
@@ -51,15 +51,22 @@ class TapHostDriver : public MsgHostIf::RxIf
         m_tap.packetReceived(m_tun_fd, data, srcAddr, destAddr);
     }
 
+    static void setTapIfUpDown(PosixTunTapIf* posix, bool up);
+
+    void msgHostRx_newAddr(LocalAddress addr) final;
+
   private:
     int tun_alloc(std::string& dev, unsigned tunFlags);
 
-    void setupCallback(React::Loop& mainLoop);
+    void setupCallback(EventLoop& mainLoop);
     TapProtocol m_tap;
 
     PosixFd m_tun_fd;
     PosixFileIf* m_pfi;
     PosixTunTapIf* m_ptti;
+    std::string m_on_if_up;
+    std::string m_on_if_down;
+    bool m_ifUp = false;
 };
 
 #endif /* SRC_DRIVERS_TAP_TAPHOSTDRIVER_H_ */

@@ -16,28 +16,10 @@
  */
 
 /*
- * RuntimeIf.h
+ * IoWatcher.cpp
  *
- *  Created on: 30 juli 2016
+ *  Created on: 2 jan. 2017
  *      Author: mikaelr
  */
 
-#ifndef SRC_CORE_RUNTIMEIF_H_
-#define SRC_CORE_RUNTIMEIF_H_
-
-/**
- * Interface for getting runtime allocated.
- */
-class RuntimeIf
-{
-  public:
-    /**
-     * Call this to allow the client to perform work.
-     * @return true if there is more to be done, false otherwise.
-     */
-    virtual bool execute() = 0;
-
-    virtual ~RuntimeIf(){};
-};
-
-#endif /* SRC_CORE_RUNTIMEIF_H_ */
+#include "IoWatcher.h"

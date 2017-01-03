@@ -46,6 +46,7 @@ class PosixFileIf
     virtual ssize_t read(int fd, void* buf, size_t size) const = 0;
     virtual ssize_t write(int fd, const void* buf, size_t size) = 0;
     virtual int close(int fd) = 0;
+    virtual int system(const char* cmd) = 0;
 
   protected:
     ~PosixFileIf(){};
@@ -120,6 +121,16 @@ class PosixTunTapIf
     // a 'struct ifreq *' but according to ref doc, a void * should be fed
     // to the function.
     virtual int ioctl_TUNSETIFF(int fd, void* ifr_p) = 0;
+
+    /**
+     * ioctl for accessing netdevice flags.
+     */
+    virtual int ioctl_SIOCSIFFLAGS(int fd, void* ifr_p) = 0;
+
+    /**
+     * ioctl for accessing netdevice flags.
+     */
+    virtual int ioctl_SIOCGIFFLAGS(int fd, void* ifr_p) = 0;
 
   protected:
     ~PosixTunTapIf(){};

@@ -60,8 +60,7 @@ class PacketTypeCodec : public MsgEtherIf::RxIf, public MasterPacketIf
         m_masterEndedCB = fkn;
     }
 
-    PacketTypeCodec(MsgEtherIf* msgEtherIf, TxQueue* tx,
-                    LocalAddress ownAddress);
+    PacketTypeCodec(MsgEtherIf* msgEtherIf, TxQueue* tx);
 
     virtual ~PacketTypeCodec();
 
@@ -110,7 +109,6 @@ class PacketTypeCodec : public MsgEtherIf::RxIf, public MasterPacketIf
     MasterPacketIf::RxIf* m_master;
     WSDump* m_wsDump;
 
-    LocalAddress m_ownAddress;
     std::deque<ByteVec> m_rxMsg;
 
     std::function<void()> m_masterEndedCB;

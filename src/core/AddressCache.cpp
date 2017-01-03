@@ -28,6 +28,8 @@ namespace
 {
 constexpr auto t = gsl::to_byte<0xff>();
 constexpr AddressCache::MacAddr broadcastMac{t, t, t, t, t, t};
+constexpr auto v = gsl::to_byte<0x0>();
+constexpr AddressCache::MacAddr illegalMac{v, v, v, v, v, v};
 }
 
 LocalAddress
@@ -98,6 +100,6 @@ AddressCache::getMac(LocalAddress local)
     }
     else
     {
-        return std::make_pair(false, broadcastMac);
+        return std::make_pair(false, illegalMac);
     }
 }

@@ -36,11 +36,13 @@ class Event
     enum class Id
     {
         init,
-        rx_grant_token,
-        rx_client_packet,
+        rx_pkt_master_start_stop,
+        rx_pkt_grant_token,
+        rx_pkt_client_packet,
         rx_return_token,
-        rx_address_request,
-        timer_timeout
+        rx_pkt_address_request,
+        timer_timeout,
+        check_new_command,
     };
 
     Event(Id id) : m_id(id)

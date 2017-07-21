@@ -33,20 +33,25 @@
 using namespace std::string_literals;
 using namespace gsl;
 
-Master::Master(EventLoop& loop, MasterPacketIf* mr, MasterTxIf* mt, Config* cfg)
-    : m_loop(loop), m_masterRx(mr), m_config(cfg), m_tx(mt),
-      m_dynamicHandler(loop, cfg, &m_scheduler, &m_tx),
-      m_actionHandler(loop, cfg, m_scheduler, &m_dynamicHandler),
-      m_fsm(this, cfg, loop)
+Master::Master(TimeServiceIf& ts, MasterPacketIf* mr,
+               MasterTxIf* mt, Config* cfg)
+    : m_masterRx(mr), m_config(cfg), m_tx(mt),
+      m_actionHandler(ts, cfg, [&](const Action& a) { m_fsm.startAction(a); }),
+      m_dynamicHandler(ts, cfg, &m_tx),
+      m_fsm(ts, m_masterRx, &m_tx, &m_dynamicHandler, cfg)
 {
+    m_actionHandler.setDynamic(&m_dynamicHandler);
+    m_dynamicHandler.setAH(&m_actionHandler);
+
+    m_actionHandler.postActionNow(Action::makeMasterStartAction());
+    m_dynamicHandler.start();
+
     if (mr)
     {
         mr->regMasterRx(this);
     }
-    m_dynamicHandler.setActionHandler(&m_actionHandler);
-
-    m_fsm.setStartState(States::StateId::init);
-    m_fsm.postEvent(Event::Id::init);
+    m_fsm.setStartState(States::StateId::idle);
+    m_actionHandler.checkNewAction();
 }
 
 Master::~Master()
@@ -67,10 +72,11 @@ void
 Master::masterPacketReceived(MessageType type,
                              const MsgEtherIf::EtherPkt& packet)
 {
+    // LOG_DEBUG << "masterPacketReceived, msg type:" << type;
     switch (type)
     {
     case MessageType::grant_token:
-        m_fsm.postEvent(EvId::rx_grant_token);
+        m_fsm.postEvent(EvId::rx_pkt_grant_token);
         break;
 
     case MessageType::return_token:
@@ -78,14 +84,16 @@ Master::masterPacketReceived(MessageType type,
         break;
 
     case MessageType::send_packet:
-        m_fsm.postEvent(EvId::rx_client_packet);
+        m_fsm.postEvent(EvId::rx_pkt_client_packet);
         break;
 
     case MessageType::master_started:
     case MessageType::master_ended:
+        m_fsm.postEvent(EvId::rx_pkt_master_start_stop);
         break;
+
     case MessageType::mac_update:
-        m_fsm.postEvent(EvId::rx_client_packet);
+        m_fsm.postEvent(EvId::rx_pkt_client_packet);
         break;
 
     case MessageType::address_discovery:
@@ -96,7 +104,7 @@ Master::masterPacketReceived(MessageType type,
             static_cast<ptrdiff_t>(sizeof(packet::AddressRequest)))
         {
             auto aReq = packet::toHeader<packet::AddressRequest>(packet);
-            Event ev(Event::Id::rx_address_request);
+            Event ev(Event::Id::rx_pkt_address_request);
             ev.eventData = *aReq;
             m_fsm.postEvent(ev);
         }

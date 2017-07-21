@@ -68,42 +68,66 @@
 
 #include "utility/Log.h"
 
-/**
- * Base class for all state classes. Templated on the HSM.
- * Allow customization of the HSM functions.
- * Supplies a number of helper function to be available in state context.
- */
-template <class HSM>
-class StateBase
-{
-  protected:
-    StateBase(HSM& hsm) : m_hsm(&hsm)
-    {
-    }
-
-    using StateId = typename HSM::StateId;
-
-  public:
-    void transition(StateId id)
-    {
-        m_hsm->transition(static_cast<int>(id));
-    }
-
-    HSM& hsm()
-    {
-        return *m_hsm;
-    }
-
-  private:
-    HSM* m_hsm;
-};
-
 class FsmBaseBase;
 
 /**
+ * Bundle of arguments passed from the FSM down to StateBase when constructing
+ * a state.
+ */
+struct StateArgs
+{
+    StateArgs(FsmBaseBase* fsmBase, int id) : m_fsmBase(fsmBase), m_stateId(id)
+    {
+    }
+
+    FsmBaseBase* m_fsmBase;
+    int m_stateId;
+};
+
+/**
+ * Base class for all state classes. Templated on the HSMto allow easy
+ * access to additional functions on the user FSM object.
+ *
+ * Supplies a number of helper function to be available in state context.
+ */
+template <class FSM>
+class StateBase
+{
+  protected:
+    using StateId = typename FSM::StateId;
+
+    StateBase(StateArgs args)
+        : m_fsm(static_cast<FSM*>(args.m_fsmBase)),
+          m_stateId(static_cast<StateId>(args.m_stateId))
+    {
+    }
+
+  public:
+    using FsmDescription = typename FSM::FsmDescription;
+
+    /**
+     * Perform a transition to a new state.
+     */
+    void transition(StateId id)
+    {
+        m_fsm->transition(static_cast<int>(id));
+    }
+
+    /// Reference to the custom state machine object.
+    FSM& fsm()
+    {
+        return *m_fsm;
+    }
+
+  private:
+    FSM* m_fsm;
+    StateId m_stateId;
+};
+
+/**
  * Base for 'StateModel' class. Classes that keep a state as a member and
- * introduce
- * inheritance for event passing.
+ * introduce inheritance for event passing. Purpose of base is to get a
+ * uniform handling of destruction.
  */
 class ModelBase
 {
@@ -120,6 +144,7 @@ class ModelBase
 class FsmSetupBase
 {
   public:
+    // Implement placement destruction for the smart pointer.
     struct PlacementDestroyer
     {
         void operator()(ModelBase* p)
@@ -130,20 +155,20 @@ class FsmSetupBase
 
     using UniquePtr = std::unique_ptr<ModelBase, PlacementDestroyer>;
 
-    using CreateFkn =
-        std::function<ModelBase*(char* store, FsmBaseBase* hsmbase)>;
+    using CreateFkn = std::function<ModelBase*(char* store, FsmBaseBase* fsm)>;
 
     struct LevelData
     {
-        std::vector<char> m_stateStorage;
-        typename FsmSetupBase::UniquePtr m_activeState;
+        UniquePtr m_activeState;
+        std::vector<char>
+            m_stateStorage; // Storage for state at this particular level.
     };
 
     struct StateInfo
     {
         template <class StateId>
         StateInfo(StateId id, StateId parentId, int level, size_t stateSize,
-                  const CreateFkn& fkn, const std::string& name = "")
+                  const CreateFkn& fkn, const std::string& name)
             : m_id(static_cast<int>(id)),
               m_parentId(static_cast<int>(parentId)), m_level(level),
               m_stateSize(stateSize), m_name(name), m_maker(fkn)
@@ -173,7 +198,8 @@ class FsmSetupBase
         return findState(static_cast<int>(id));
     }
 
-    void addStateBase(int stateId, int parentId, size_t size, CreateFkn fkn);
+    void addStateBase(int stateId, int parentId, size_t size, CreateFkn fkn,
+                      std::string name);
 
     std::vector<StateInfo> m_states;
     int m_maxLevel = 0;
@@ -264,7 +290,7 @@ template <class Fsm, class St, class Event>
 class StateModel : public EventInterface<Event>
 {
   public:
-    StateModel(FsmBaseBase* fsm) : m_state(*static_cast<Fsm*>(fsm))
+    StateModel(StateArgs args) : m_state(args)
     {
     }
     bool event(const Event& event) override
@@ -343,6 +369,7 @@ class FsmBase : public FsmBaseSt<St>
   public:
     using StateId = typename St::StateId;
     using Event = typename St::Event;
+    using FsmDescription = St;
 
     /**
      * Set start state and perform initial jump to that state.
@@ -379,13 +406,16 @@ class FsmBase : public FsmBaseSt<St>
     template <class State, StateId stateId, StateId parentId>
     void addState()
     {
-        auto fkn = [&](char* store, FsmBaseBase* hsm) -> ModelBase* {
+        auto fkn = [&](char* store, FsmBaseBase* fsm) -> ModelBase* {
             return static_cast<ModelBase*>(
-                new (store) StateModel<MyFsm, State, Event>(hsm));
+                new (store) StateModel<MyFsm, State, Event>(
+                    StateArgs(fsm, static_cast<int>(stateId))));
         };
         auto size = sizeof(StateModel<MyFsm, State, Event>);
-        FsmBaseBase::m_base.m_setup.addStateBase(
-            static_cast<int>(stateId), static_cast<int>(parentId), size, fkn);
+        auto name = State::FsmDescription::toString(stateId);
+        FsmBaseBase::m_base.m_setup.addStateBase(static_cast<int>(stateId),
+                                                 static_cast<int>(parentId),
+                                                 size, fkn, name);
     }
 };
 

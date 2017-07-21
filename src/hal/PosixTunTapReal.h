@@ -41,6 +41,15 @@ class PosixTunTapReal : public PosixTunTapIf
      * ioctl for accessing netdevice flags.
      */
     int ioctl_SIOCGIFFLAGS(int fd, void* ifr_p) final;
+
+    int ioctl_TUNSETOWNER(int fd, uid_t uid) final;
+
+    int ioctl_TUNSETGROUP(int fd, gid_t gid) final;
+
+    int ioctl_TUNSETPERSIST(int fd, int persist) final;
+
+    // Open a socket.
+    int socket(int domain, int type, int protocol) final;
 };
 
 #endif /* SRC_HAL_POSIXTUNTAPREAL_H_ */

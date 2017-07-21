@@ -16,26 +16,20 @@
  */
 
 /*
- * MasterUtils.h
+ * Timer.h
  *
- *  Created on: 12 nov. 2016
+ *  Created on: 10 juli 2017
  *      Author: mikaelr
  */
 
-#ifndef SRC_MASTER_MASTERUTILS_H_
-#define SRC_MASTER_MASTERUTILS_H_
+#ifndef SRC_UTILITY_TIMER_H_
+#define SRC_UTILITY_TIMER_H_
 
 #include <functional>
 #include <memory>
 
-#include "eventwrapper/EventLoop.h"
-
-class MasterUtils
-{
-  public:
-    MasterUtils();
-    ~MasterUtils();
-};
+class EventLoop;
+class TimeoutWatcher;
 
 /**
  * Helper class. Have one of these as you member.
@@ -47,7 +41,7 @@ class Timer
   public:
     Timer(EventLoop& loop);
 
-    // Issue a timeout in a number of sec. Vall the given function then.
+    // Issue a timeout in a number of sec. Call the given function then.
     void makeTimeout(double timeout, std::function<void()> fkn);
 
     void makeTimeoutAbs(double timeout, std::function<void()> fkn);
@@ -66,4 +60,4 @@ class Timer
     std::shared_ptr<void*> m_timeoutHelper;
 };
 
-#endif /* SRC_MASTER_MASTERUTILS_H_ */
+#endif /* SRC_UTILITY_TIMER_H_ */

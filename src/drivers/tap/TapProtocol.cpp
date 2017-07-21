@@ -32,6 +32,12 @@
 using std::array;
 using namespace gsl;
 
+constexpr gsl::byte operator"" _bt(unsigned long long bt)
+{
+    assert(bt < 256);
+    return gsl::to_byte(static_cast<unsigned char>(bt));
+}
+
 struct TapProtocol::EtherHeader
 {
     array<byte, 6> m_destMAC;
@@ -175,13 +181,13 @@ TapProtocol::checkArp(const TapHeader* tap)
     {
         return;
     }
-    auto ethArpType = array<byte, 2>{{to_byte<0x08>(), to_byte<0x06>()}};
+    auto ethArpType = array<byte, 2>{{0x08_bt, 0x06_bt}};
     if (tap->m_ether.m_type == ethArpType)
     {
         const ArpIpv4Header& arp = tap->m_arpIpv4;
-        auto ptypeIpv4 = array<byte, 2>{{to_byte<0x08>(), to_byte<0x00>()}};
-        auto operReq = array<byte, 2>{{to_byte<0x00>(), to_byte<0x01>()}};
-        auto operReply = array<byte, 2>{{to_byte<0x00>(), to_byte<0x02>()}};
+        auto ptypeIpv4 = array<byte, 2>{{0x08_bt, 0x00_bt}};
+        auto operReq = array<byte, 2>{{0x00_bt, 0x01_bt}};
+        auto operReply = array<byte, 2>{{0x00_bt, 0x02_bt}};
         if (arp.m_ptype == ptypeIpv4 &&
             (arp.m_oper == operReply || arp.m_oper == operReq))
         {

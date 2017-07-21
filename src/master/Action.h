@@ -27,39 +27,71 @@
 
 #include "interfaces/SerialProtocol.h"
 
+#include <string>
+
 class Action
 {
   public:
     enum class Cmd
     {
+        send_master_start,
         send_token,
-        delay,
         query_address,
+        do_nothing,
     };
 
-    Action(Cmd state, LocalAddress addr, double time)
-        : m_action(state), m_address(addr), m_nextTime(time)
+    enum class ReturnValue
+    {
+        ok,
+        not_set,
+        timeout, // General error reporting timeout.
+        rx_token_no_packet,
+        client_packet_started,
+        token_timeout,
+        address_query_done,
+    };
+
+    Action() : m_action(Cmd::do_nothing), m_address(LocalAddress::null_addr)
     {
     }
 
-    static Action makeDelayAction(double time)
+    Action(Cmd state, LocalAddress addr) : m_action(state), m_address(addr)
     {
-        return Action(Cmd::delay, LocalAddress::null_addr, time);
+    }
+
+    bool doNothing() const
+    {
+        return m_action == Cmd::do_nothing;
+    }
+
+    static Action makeMasterStartAction()
+    {
+        return Action(Cmd::send_master_start, LocalAddress::null_addr);
     }
 
     static Action makeSendTokenAction(LocalAddress addr)
     {
-        return Action(Cmd::send_token, addr, 0.0);
+        return Action(Cmd::send_token, addr);
     }
 
     static Action makeQueryAddressAction()
     {
-        return Action(Cmd::query_address, LocalAddress::null_addr, 0.0);
+        return Action(Cmd::query_address, LocalAddress::null_addr);
     }
+
+    static Action makeDoNothingAction()
+    {
+        return Action(Cmd::do_nothing, LocalAddress::null_addr);
+    }
+
+    static std::string toString(Cmd cmd);
+
+    static std::string toString(ReturnValue cmd);
 
     Cmd m_action;
     LocalAddress m_address;
-    double m_nextTime;
+    ReturnValue m_result = ReturnValue::not_set;
+    std::function<void(ReturnValue)> m_reportCB = nullptr;
 };
 
 inline bool

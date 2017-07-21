@@ -7,21 +7,13 @@ SCRIPT=$(readlink -f $0)
 GIT_ROOT_PATH=`dirname ${SCRIPT}`/..
 
 sudo apt-get update
-sudo apt-get install cmake ninja-build make libboost-all-dev libconfig++-dev git git-gui gitk socat libev-dev libc-ares-dev
+sudo apt-get install cmake ninja-build make libboost-all-dev libconfig++-dev git git-gui gitk socat libev-dev libc-ares-dev libmosquitto-dev
 
-# Get and build REACT-CPP
-#CURR_PWD=`pwd`
-#git clone https://github.com/CopernicaMarketingSoftware/REACT-CPP.git ${GIT_ROOT_PATH}/../reactcpp
-#cd ${GIT_ROOT_PATH}/../reactcpp
-#make
-#sudo make install
-#cd $CURR_PWD
+git -C ${GIT_ROOT_PATH} submodule update --init external/googletest
 
-#git clone https://github.com/Microsoft/GSL.git ${GIT_ROOT_PATH}/../GSL
-
-mkdir ${GIT_ROOT_PATH}/../serial_net-build
-cd ${GIT_ROOT_PATH}/../serial_net-build
-cmake -G Ninja ../serial_net
+mkdir ${GIT_ROOT_PATH}/out
+cd ${GIT_ROOT_PATH}/out
+cmake -G Ninja ..
 ninja -j 4
 
 cd $CURR_PWD

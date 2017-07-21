@@ -42,11 +42,13 @@ Event::toString(Id id)
     switch (id)
     {
         CASE(init);
-        CASE(rx_grant_token);
-        CASE(rx_client_packet);
+        CASE(rx_pkt_master_start_stop);
+        CASE(rx_pkt_grant_token);
+        CASE(rx_pkt_client_packet);
         CASE(rx_return_token);
         CASE(timer_timeout);
-        CASE(rx_address_request);
+        CASE(rx_pkt_address_request);
+        CASE(check_new_command);
     }
     return "";
 }

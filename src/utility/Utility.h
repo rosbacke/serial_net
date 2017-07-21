@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <gsl/gsl>
 #include <string>
+#include <vector>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 

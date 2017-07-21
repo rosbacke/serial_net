@@ -62,6 +62,11 @@ class EventLoop
                                               std::function<bool()> cb);
 
     /**
+     * Call the callback as soon as the last callback was done.
+     */
+    std::shared_ptr<TimeoutWatcher> onAvailable(std::function<bool()> cb);
+
+    /**
      * Wait for a given Unix process signal.
      */
     std::shared_ptr<SignalWatcher> onSignal(int signal,

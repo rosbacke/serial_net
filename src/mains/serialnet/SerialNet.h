@@ -29,6 +29,7 @@
 #include "drivers/serial/SerialByteEther.h"
 #include "hal/PosixFileReal.h"
 #include "hal/PosixTunTapReal.h"
+#include "hal/TimeServiceEv.h"
 #include "interfaces/MsgEtherIf.h"
 #include "utility/Config.h"
 
@@ -42,7 +43,7 @@
 
 #include <memory>
 
-#include "../../eventwrapper/EventLoop.h"
+#include "eventwrapper/EventLoop.h"
 #include <core/AddressCache.h>
 #include <drivers/tap/SocatTapHostDriver.h>
 
@@ -59,6 +60,8 @@ class MsgToByteAdapter;
 class SerialHalReal;
 class TxQueue;
 class PacketTypeCodec;
+class EtherSession;
+class RealPosixFactory;
 
 /**
  * Application class for the utility serial net.
@@ -69,7 +72,7 @@ class SerialNet
     SerialNet();
     virtual ~SerialNet();
 
-    void start(boost::program_options::variables_map& vm);
+    bool start();
 
     void mainLoop();
 
@@ -77,9 +80,13 @@ class SerialNet
 
     void exit();
 
+    void setupSNConfig(boost::program_options::variables_map& vm)
+    {
+        m_snConfig.setupSNConfig(vm);
+    }
+
   private:
-    // Current mode of the program.
-    SNConfig::Mode m_mode;
+    void setupMaster();
 
     // interface toward a posix system.
     PosixFileReal m_posixFileIf;
@@ -90,8 +97,15 @@ class SerialNet
 
     // Configuration from file/various timing constants.
     Config m_config;
+
+    // Startup configuration.
+    SNConfig m_snConfig;
+
     EventLoop m_loop;
-    std::unique_ptr<SerialHalReal> m_serialHalReal;
+    TimeServiceEv m_ts;
+
+    std::unique_ptr<RealPosixFactory> m_factory;
+
     std::unique_ptr<PacketTypeCodec> m_packetTypeCodec;
     std::unique_ptr<TxQueue> m_txQueue;
 

@@ -33,9 +33,15 @@ using gsl::byte;
 using gsl::to_byte;
 using gsl::to_integer;
 
+constexpr gsl::byte operator"" _bt(unsigned long long bt)
+{
+    // static_assert(bt < 256, "Byte literal value needs to less than 256.");
+    return gsl::to_byte(static_cast<unsigned char>(bt));
+}
+
 FrameCodec::FrameCodec(MsgEtherIf::RxIf* decodeCB)
     : m_decodeCB(decodeCB), m_state(DecodeState::getKW), m_length(0),
-      m_index(0), m_checksum(to_byte<0>())
+      m_index(0), m_checksum(0_bt)
 {
 }
 
@@ -47,7 +53,7 @@ void
 FrameCodec::encodePacket(const MsgEtherIf::EtherPkt& data, ByteVec& result)
 {
     const std::size_t dataLen = data.size();
-    auto checksum = to_byte<0>();
+    auto checksum = 0_bt;
 
     result.resize(dataLen + 5);
     result[0] = keyword;
@@ -75,7 +81,7 @@ FrameCodec::encodePacket(const MsgEtherIf::EtherPkt& data, ByteVec& result)
         checksum ^= el;
     }
     result[dataLen + offset] = checksum;
-    result[dataLen + offset + 1] = to_byte<0xff>();
+    result[dataLen + offset + 1] = 0xff_bt;
 }
 
 void
@@ -136,7 +142,7 @@ FrameCodec::decodeByte(byte curByte)
     }
     case DecodeState::getFiller:
     {
-        if (m_checksum == to_byte<0>() && m_decodeCB)
+        if (m_checksum == 0_bt && m_decodeCB)
         {
             MsgEtherIf::EtherPkt pt(m_decodePacket.data(), m_length);
             m_decodeCB->msgEtherRx_newMsg(pt);

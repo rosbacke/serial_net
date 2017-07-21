@@ -34,7 +34,6 @@
 /**
  * Interface for sending and receiving packets from the low level byte
  * interface.
- *
  */
 class MsgEtherIf
 {

@@ -32,6 +32,8 @@
  */
 class AddressLine
 {
+    using UniqueId = packet::UniqueId;
+
   public:
     enum class State
     {
@@ -41,8 +43,15 @@ class AddressLine
         free       // This address does not respond to token request.
     };
 
-    AddressLine(LocalAddress addr, State s = State::idle, bool dynamic = false)
+    AddressLine(LocalAddress addr)
+        : m_state(State::free), m_address(addr), m_isDynamic(false){};
+
+    AddressLine(LocalAddress addr, State s, bool dynamic)
         : m_state(s), m_address(addr), m_isDynamic(dynamic){};
+
+    AddressLine(LocalAddress addr, State s, bool dynamic, UniqueId uid)
+        : m_state(s), m_address(addr), m_isDynamic(dynamic), m_uniqueId(uid){};
+
     ~AddressLine(){};
 
     void setInit(State state)
@@ -79,11 +88,17 @@ class AddressLine
         }
     }
 
+    UniqueId uniqueId() const
+    {
+        return m_uniqueId;
+    }
+
   private:
     State m_state = State::idle;
     int m_badCount = 0;
     LocalAddress m_address;
     bool m_isDynamic = false;
+    UniqueId m_uniqueId;
 };
 
 #endif /* SRC_MASTER_ADDRESSLINE_H_ */

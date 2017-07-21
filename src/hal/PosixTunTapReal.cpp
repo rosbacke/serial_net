@@ -54,3 +54,27 @@ PosixTunTapReal::ioctl_SIOCGIFFLAGS(int fd, void* ifr_p)
 {
     return ::ioctl(fd, SIOCGIFFLAGS, ifr_p);
 }
+
+int
+PosixTunTapReal::ioctl_TUNSETOWNER(int fd, uid_t uid)
+{
+    return ::ioctl(fd, TUNSETOWNER, uid);
+}
+
+int
+PosixTunTapReal::ioctl_TUNSETGROUP(int fd, gid_t gid)
+{
+    return ::ioctl(fd, TUNSETGROUP, gid);
+}
+
+int
+PosixTunTapReal::ioctl_TUNSETPERSIST(int fd, int persist)
+{
+    return ::ioctl(fd, TUNSETPERSIST, persist);
+}
+
+int
+PosixTunTapReal::socket(int domain, int type, int protocol)
+{
+    return ::socket(domain, type, protocol);
+}

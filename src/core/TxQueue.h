@@ -27,11 +27,11 @@
 
 #include <deque>
 
+#include "OwnAddress.h"
 #include "interfaces/MasterTxIf.h"
+#include "interfaces/MsgHostIf.h"
 #include "utility/Log.h"
 #include "utility/Utility.h"
-
-#include "interfaces/MsgHostIf.h"
 
 /**
  * Responsible for sending packets to the network.
@@ -41,7 +41,7 @@ class TxQueue : public MsgHostIf, public MasterTxIf
   public:
     TxQueue(MsgEtherIf* msgEtherIf, LocalAddress ownAddr)
         : m_msgEtherIf(msgEtherIf), m_ownAddress(ownAddr),
-          m_gotDynamicAddress(ownAddr == LocalAddress::null_addr)
+          m_gotDynamicAddress(!m_ownAddress.valid())
     {
         LOG_INFO << "Set own address to :" << ownAddr << " at start.";
     }
@@ -52,11 +52,7 @@ class TxQueue : public MsgHostIf, public MasterTxIf
     void setAddress(LocalAddress addr)
     {
         LOG_INFO << "Set own address to :" << addr;
-        m_ownAddress = addr;
-        if (m_addrChangeIf)
-        {
-            m_addrChangeIf->msgHostRx_newAddr(m_ownAddress);
-        }
+        m_ownAddress.set(addr);
     }
 
     void sendPacket(const MsgHostIf::HostPkt& data, LocalAddress address);
@@ -69,7 +65,7 @@ class TxQueue : public MsgHostIf, public MasterTxIf
 
     virtual LocalAddress msgHostTx_clientAddress() const override
     {
-        return m_ownAddress;
+        return m_ownAddress.addr();
     }
 
     // Called by the master to send a packet. Contain everything except the
@@ -81,7 +77,7 @@ class TxQueue : public MsgHostIf, public MasterTxIf
 
     virtual LocalAddress clientAddress() const override
     {
-        return m_ownAddress;
+        return m_ownAddress.addr();
     }
 
     // Return true if the Tx queue is empty.
@@ -105,7 +101,7 @@ class TxQueue : public MsgHostIf, public MasterTxIf
 
     virtual void setAddrUpdateHandler(MsgHostIf::AddrChange* ac)
     {
-        m_addrChangeIf = ac;
+        m_ownAddress.setListener(ac);
     }
 
     // Indicate that the master on this bus has started again.
@@ -118,11 +114,11 @@ class TxQueue : public MsgHostIf, public MasterTxIf
 
     std::deque<ByteVec> m_txMsg;
     MsgEtherIf* m_msgEtherIf = nullptr;
-    LocalAddress m_ownAddress = LocalAddress::null_addr;
+    OwnAddress m_ownAddress;
+
     bool m_gotDynamicAddress;
 
     MsgHostIf::RxIf* m_rxIf = nullptr;
-    MsgHostIf::AddrChange* m_addrChangeIf = nullptr;
 };
 
 #endif /* SRC_CORE_TXQUEUE_H_ */

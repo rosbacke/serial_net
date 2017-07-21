@@ -59,6 +59,9 @@ class MasterTxIf
 class MasterPacketIf
 {
   public:
+    /** Master offers a class implementing this interface to deliver
+     * packets to the master.
+     */
     class RxIf
     {
       public:

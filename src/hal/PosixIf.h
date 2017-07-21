@@ -122,6 +122,11 @@ class PosixTunTapIf
     // to the function.
     virtual int ioctl_TUNSETIFF(int fd, void* ifr_p) = 0;
 
+    // Set user for a tuntap interface
+    virtual int ioctl_TUNSETOWNER(int fd, uid_t uid) = 0;
+
+    virtual int ioctl_TUNSETGROUP(int fd, gid_t gid) = 0;
+
     /**
      * ioctl for accessing netdevice flags.
      */
@@ -131,6 +136,12 @@ class PosixTunTapIf
      * ioctl for accessing netdevice flags.
      */
     virtual int ioctl_SIOCGIFFLAGS(int fd, void* ifr_p) = 0;
+
+    // Set persistent mode for a tap/tun interface.
+    virtual int ioctl_TUNSETPERSIST(int fd, int persist) = 0;
+
+    // socket. Needed by tun/tap but should probably be placed elsewhere.
+    virtual int socket(int domain, int type, int protocol) = 0;
 
   protected:
     ~PosixTunTapIf(){};

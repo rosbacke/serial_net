@@ -26,7 +26,7 @@
 
 void
 FsmSetupBase::addStateBase(int stateId, int parentId, size_t size,
-                           CreateFkn fkn)
+                           CreateFkn fkn, std::string name)
 {
     int level = 0;
     if (stateId != parentId)
@@ -34,7 +34,7 @@ FsmSetupBase::addStateBase(int stateId, int parentId, size_t size,
         auto parent = findState(parentId);
         level = parent->m_level + 1;
     }
-    auto t = StateInfo(stateId, parentId, level, size, fkn);
+    auto t = StateInfo(stateId, parentId, level, size, fkn, name);
     m_states.emplace_back(t);
     if (m_maxLevel < level)
     {
@@ -110,6 +110,7 @@ FsmBaseSupport::findFirstThatDiffer()
 void
 FsmBaseSupport::cleanup()
 {
+    doExit(0);
     // Clean up states in the correct order.
     while (!m_stackFrames.empty())
     {
@@ -123,8 +124,8 @@ FsmBaseSupport::doExit(size_t bl)
     const auto bottomLevel = bl;
     while (m_currentInfos.size() > bottomLevel)
     {
+        m_stackFrames[m_currentInfos.size() - 1].m_activeState.reset(nullptr);
         m_currentInfos.pop_back();
-        m_stackFrames[m_currentInfos.size()].m_activeState.reset(nullptr);
     }
 }
 void
@@ -141,8 +142,9 @@ FsmBaseSupport::doEntry(size_t targetLevel)
         {
             storeVec.resize(newState->m_stateSize);
         }
-        frame.m_activeState.reset(newState->m_maker(storeVec.data(), m_hsm));
+
         m_currentInfos.push_back(newState);
+        frame.m_activeState.reset(newState->m_maker(storeVec.data(), m_hsm));
     }
 }
 void

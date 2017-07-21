@@ -23,3 +23,43 @@
  */
 
 #include "Action.h"
+
+std::string
+Action::toString(Cmd cmd)
+{
+    using Cmd = Action::Cmd;
+    switch (cmd)
+    {
+    case Cmd::send_master_start:
+        return "send_master_start";
+    case Cmd::send_token:
+        return "send_token";
+    case Cmd::query_address:
+        return "query_address";
+    case Cmd::do_nothing:
+        return "do_nothing";
+    }
+    return "error";
+}
+
+#define CASE(x) \
+    case RV::x: \
+        return #x
+
+std::string
+Action::toString(ReturnValue rv)
+{
+    using RV = Action::ReturnValue;
+    switch (rv)
+    {
+        CASE(ok);
+        CASE(not_set);
+        CASE(timeout);
+        CASE(rx_token_no_packet);
+        CASE(client_packet_started);
+        CASE(token_timeout);
+        CASE(address_query_done);
+    };
+    return "error";
+}
+#undef CASE

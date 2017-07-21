@@ -16,10 +16,44 @@
  */
 
 /*
- * SerialHalReal2.cpp
+ * DynamicAddress.h
  *
- *  Created on: 29 okt. 2016
+ *  Created on: 8 juli 2017
  *      Author: mikaelr
  */
 
-#include "SerialHalReal.h"
+#ifndef SRC_MASTER_DYNAMICADDRESS_H_
+#define SRC_MASTER_DYNAMICADDRESS_H_
+
+#include "interfaces/SerialProtocol.h"
+
+class DynamicAddress
+{
+    using UniqueId = packet::UniqueId;
+
+  public:
+    DynamicAddress();
+
+    DynamicAddress(UniqueId uniqueId, LocalAddress local)
+        : m_uniqueId(uniqueId), m_local(local)
+    {
+    }
+
+    ~DynamicAddress();
+
+    LocalAddress local() const
+    {
+        return m_local;
+    }
+
+    UniqueId uniqueId() const
+    {
+        return m_uniqueId;
+    }
+
+  private:
+    UniqueId m_uniqueId;
+    LocalAddress m_local = LocalAddress::null_addr;
+};
+
+#endif /* SRC_MASTER_DYNAMICADDRESS_H_ */

@@ -81,6 +81,7 @@ PacketTypeCodec::rxRawPacket(const MsgEtherIf::EtherPkt& bb)
 {
     if (!longEnough(bb))
     {
+    	LOG_WARN << "Received to short packet, size:" <<  bb.size();
         return;
     }
     if (m_wsDump)
@@ -88,7 +89,7 @@ PacketTypeCodec::rxRawPacket(const MsgEtherIf::EtherPkt& bb)
         m_wsDump->rxPacket(bb);
     }
     const auto cmd = byte2MessageType(bb[0]);
-    LOG_TRACE << "Command: " << cmd << " raw len: " << bb.size();
+    LOG_TRACE << "Command: " << toString(cmd) << " raw len: " << bb.size();
     LocalAddress ownAddress = m_txQueue->clientAddress();
     switch (cmd)
     {

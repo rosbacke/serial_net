@@ -25,153 +25,73 @@
 #include "ActionHandler.h"
 
 #include "MasterScheduler.h"
+#include "interfaces/TimeServiceIf.h"
+#include "utility/Log.h"
 
-ActionHandler::ActionHandler(EventLoop& loop, Config* cfg, MasterScheduler& ms,
-                             DynamicHandler* dh)
-    : m_minAddr(cfg->staticLowAddress()), m_maxAddr(cfg->staticHighAddress()),
-      m_loop(loop), m_config(cfg), m_scheduler(ms), m_dynamic(dh)
+ActionHandler::ActionHandler(TimeServiceIf& ts, Config* cfg,
+                             std::function<void(const Action&)> triggerAction)
+    : m_ts(ts), m_config(cfg), m_triggerNewAction(triggerAction)
 {
-    double now = loop.now();
-    for (int i = m_minAddr; i <= m_maxAddr; ++i)
-    {
-        m_table.emplace_back(toLocalAddress(i));
-        m_scheduler.addAction(
-            Action::makeSendTokenAction(static_cast<LocalAddress>(i)), now);
-    }
-}
-
-double
-ActionHandler::nextTime(AddressLine::State state)
-{
-    using State = AddressLine::State;
-    auto now = m_loop.now();
-    switch (state)
-    {
-    case State::active:
-        return now + m_config->addrDelayTokenPacketSent();
-    case State::idle:
-        return now + m_config->addrDelayTokenReturn();
-    case State::badClient:
-        return now + m_config->addrDelayTokenTimeout();
-    case State::free:
-        return now + m_config->addrDelayFreeAddress();
-    }
-    return 0.0;
-}
-
-AddressLine*
-ActionHandler::find(LocalAddress address)
-{
-    auto i = std::find_if(
-        m_table.begin(), m_table.end(),
-        [&](const auto& el) -> bool { return address == el.getAddr(); });
-    if (i != m_table.end())
-    {
-        return &(*i);
-    }
-    else
-    {
-        return nullptr;
-    }
 }
 
 void
-ActionHandler::updateAddressLine(AddressLine::State newState)
+ActionHandler::reportActionResult(Action::ReturnValue rv)
 {
-    auto addr = m_scheduler.active().m_action.m_address;
+    // LOG_DEBUG << "Action result: " << Action::toString(rv);
 
-    AddressLine* line = find(addr);
-    line->setState(newState);
-    if (m_frontInProgress)
+    auto addr = m_currentAction.m_address;
+    m_currentAction = Action::makeDoNothingAction();
+
+    using RV = Action::ReturnValue;
+    switch (rv)
     {
-        m_scheduler.pop();
-        m_frontInProgress = false;
+    case RV::client_packet_started:
+        m_dynamic->updateAddressLine(addr, AddressLine::State::active);
+        break;
+
+    case RV::rx_token_no_packet:
+        m_dynamic->updateAddressLine(addr, AddressLine::State::idle);
+        break;
+
+    case RV::token_timeout:
+        m_dynamic->updateAddressLine(addr, AddressLine::State::badClient);
+        break;
+
+    case RV::address_query_done:
+        m_dynamic->addressDiscoveryIsDone();
+        break;
+
+    case RV::ok:
+        break;
+
+    default:
+        assert(0);
     }
-    if (line->removeDynamic())
-    {
-        removeLine(line);
-        m_dynamic->releaseAddress(addr);
-    }
-    else
-    {
-        m_scheduler.addAction(Action::makeSendTokenAction(addr),
-                              nextTime(line->getState()));
-    }
+    checkNewAction();
 }
 
 void
-ActionHandler::removeLine(AddressLine* line)
+ActionHandler::checkNewAction()
 {
-    size_t offset = line - m_table.data();
-    m_table.erase(m_table.begin() + offset);
-}
-
-void
-ActionHandler::gotReturnToken()
-{
-    updateAddressLine(AddressLine::State::idle);
-}
-
-void
-ActionHandler::tokenTimeout()
-{
-    updateAddressLine(AddressLine::State::badClient);
-}
-
-void
-ActionHandler::packetStarted()
-{
-    updateAddressLine(AddressLine::State::active);
-}
-
-void
-ActionHandler::addressQueryDone()
-{
-    if (m_frontInProgress)
+    if (m_currentAction.doNothing() && m_triggerNewAction)
     {
-        m_scheduler.pop();
-        m_frontInProgress = false;
-        auto nextTime = m_loop.now() + m_config->addrQueryPeriod();
-        m_scheduler.addAction(Action::makeQueryAddressAction(), nextTime);
+        auto now = m_ts.now();
+        if (m_scheduler.workToDo(now))
+        {
+            m_currentAction = m_scheduler.front();
+            m_scheduler.pop();
+            m_triggerNewAction(m_currentAction);
+        }
+        else
+        {
+            auto nextTime = m_scheduler.readyTime();
+            if (nextTime < 1.0)
+                return;
+            else
+            {
+                m_delayAction = m_ts.makeTimeoutAbs(
+                    nextTime, [&]() { this->checkNewAction(); });
+            }
+        }
     }
-}
-
-Action
-ActionHandler::nextAction()
-{
-    auto now = m_loop.now();
-    auto& a = m_scheduler.active();
-    if (a.m_nextTime <= now)
-    {
-        m_frontInProgress = true;
-        return a.m_action;
-    }
-    else
-    {
-        return Action::makeDelayAction(a.m_nextTime);
-    }
-}
-
-void
-ActionHandler::addDynamic(LocalAddress local)
-{
-    m_table.emplace_back(local, AddressLine::State::idle, true);
-    m_scheduler.addAction(Action::makeSendTokenAction(local),
-                          m_loop.now() + 0.01);
-}
-
-std::string
-toString(Action::Cmd state)
-{
-    using State = Action::Cmd;
-    switch (state)
-    {
-    case State::delay:
-        return "delay";
-    case State::send_token:
-        return "send_token";
-    case State::query_address:
-        return "query_address";
-    }
-    return "error";
 }

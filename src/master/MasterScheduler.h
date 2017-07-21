@@ -26,9 +26,13 @@
 #define SRC_MASTER_MASTERSCHEDULER_H_
 
 #include "Action.h"
+#include "eventwrapper/EventLoop.h"
 #include "interfaces/SerialProtocol.h"
+#include "utility/VecQueue.h"
 
 #include <queue>
+
+class EventLoop;
 
 /**
  * Keep track of upcoming tasks to be done in the future.
@@ -47,28 +51,55 @@ class MasterScheduler
         Action m_action;
     };
 
-    MasterScheduler();
-    ~MasterScheduler();
+    MasterScheduler(){};
+    ~MasterScheduler(){};
 
     void addAction(const Action& a, double t)
     {
-        m_ready.emplace(a, t);
+        m_waiting.emplace(a, t);
     }
-    const QueueEl& active() const
+
+    void addActionNow(const Action& a)
     {
-        return m_ready.top();
+        m_ready.push(a);
     }
+
+    const Action& front() const
+    {
+        return m_ready.front();
+    }
+
     void pop()
     {
         m_ready.pop();
     }
 
+    bool workToDo(double now)
+    {
+        while (!m_waiting.empty() && m_waiting.top().m_nextTime <= now)
+        {
+            m_ready.push(m_waiting.top().m_action);
+            m_waiting.pop();
+        }
+        return !m_ready.empty();
+    }
+
+    // Assumes we have already emptied the ready queue. Return time
+    // for the first element of the waiting queue.
+    double readyTime()
+    {
+        return m_waiting.empty() ? 0.0 : m_waiting.top().m_nextTime;
+    }
+
   private:
     friend bool operator>(const QueueEl& lhs, const QueueEl& rhs);
 
-    // All active addresses should be in one of these.
+    // Actions to be done in the future.
     std::priority_queue<QueueEl, std::vector<QueueEl>, std::greater<QueueEl>>
-        m_ready;
+        m_waiting;
+
+    // Actions ready for processing.
+    VecQueue<Action> m_ready;
 };
 
 inline bool

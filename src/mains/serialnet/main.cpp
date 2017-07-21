@@ -49,7 +49,7 @@ setupOptions(po::options_description& desc)
          "<none>|<pulldown>|<rs485_te>") //
         ("mode", po::value<std::string>(),
          "Mode the program should work in. Allowed: std_in, std_out, std_io, "
-         "socat_tun, socat_tap, tap.") //
+         "socat_tun, socat_tap, tap, setup_tap, remove_tap.") //
         ("address", po::value<int>()->default_value(0),
          "Local address on the serial net. Implies static address. "
          "If not given, implies dynamic address for client only or static "
@@ -74,6 +74,13 @@ setupOptions(po::options_description& desc)
         ("on-if-down", po::value<std::string>()->default_value(""),
          "Give a command to run using 'system' call when the interface goes "
          "down.") //
+        ("user", po::value<std::string>()->default_value(""),
+         "Owning user when setting up a tap interface.") //
+        ("group", po::value<std::string>()->default_value(""),
+         "Owning group when setting up a tap interface.") //
+        ("tap-name", po::value<std::string>()->default_value("tap0"),
+         "Name to use for the tap/tun interface.") //
+
         ;
 }
 
@@ -121,14 +128,24 @@ main(int argc, const char* argv[])
                   << std::endl;
         return 1;
     }
+#if 0
     if (vm.count("serial-device") < 1)
     {
-        std::cout << "Need serial device.\n\n" << desc << std::endl;
-        return 1;
+    	std::string mode = vm["mode"].as<std::string>();
+    	std::cerr << "Mode:" << mode << std::endl;
+    	if (mode != std::string("setup_tap"))
+    	{
+    	    std::cout << "Need serial device.\n\n" << desc << std::endl;
+    	    return 1;
+    	}
     }
+#endif
 
     SerialNet sn;
-    sn.start(vm);
-    sn.mainLoop();
+    sn.setupSNConfig(vm);
+    if (sn.start())
+    {
+        sn.mainLoop();
+    }
     return 0;
 }

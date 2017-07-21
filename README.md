@@ -24,14 +24,10 @@ Intended usage is as a link between cost constrained devices where you still
 need a wire for power supply. With some clever HW hacking both power and
 signaling can go over a common pair. For more range and speed, RS485 with a
 pair of power cables could be suitable.
-
-See separate INSTALL file for instructions on compiling, setup.
-See separate serial_hardware.txt file for a discussion on various cheap
-hardware solutions for constructing the bus.
 This is highly EXPERIMENTAL software still in alpha state. Use it at your
 own risk. No responsibility can be assumed.
 
-Licencing
+Licensing
 =========
 
 The software is copyrighted by Mikael Rosbacke. The public releases are made
@@ -45,6 +41,20 @@ authors and distributed under a separate license:
 In addition the software depends on a non-Debian packaged library:   
  * ReactCPP : Released by CopernicaMarketingSoftware, Licensed under the
    Apache license v.2
+
+Installation
+============
+The tool is developed on Ubuntu 16.04 so this is the easiest installation.
+Try the 'tools/setup_dependencies.sh' to install dependencies and build
+the tool.
+A test has been done on RaspberryPi 2 using a Debian jessie install.
+Needed modification is to install g++-6 packet and change the CMakeLists.txt
+to use g++-6 compiler. (default 4.9 won't cut it.) Also disable cmake 
+from entering the 'external/googletest/googletest' and 'utest' library.
+
+See separate serial_hardware.txt file for a discussion on various cheap
+hardware solutions for constructing the bus.
+
 
 High level overview
 ===================

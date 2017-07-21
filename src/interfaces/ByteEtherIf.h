@@ -48,6 +48,7 @@ class ByteEtherIf
     virtual ~ByteEtherIf(){};
 
     // Send a byte to the ether.
+    // Will throw if we fail to write data.
     virtual void sendBytes(const gsl::span<const gsl::byte>& bytes) = 0;
 
     // Register a receiver.

@@ -25,27 +25,21 @@
 #ifndef SRC_CORE_MSGTOBYTEADAPTER_H_
 #define SRC_CORE_MSGTOBYTEADAPTER_H_
 
-#include "../eventwrapper/EventLoop.h"
 #include "FrameCodec.h"
 #include "interfaces/ByteEtherIf.h"
 #include "interfaces/MsgEtherIf.h"
+#include "interfaces/TimeServiceIf.h"
 
 /**
  * Handle the byte to frame encoding/decoding.
  *
  * Sits between the serial driver and the Frame interface.
  */
-class MsgToByteAdapter : public MsgEtherIf, public ByteEtherIf::RxIf
+class MsgToByteAdapter : public MsgEtherIf
 {
   public:
-    MsgToByteAdapter();
+    explicit MsgToByteAdapter(TimeServiceIf& ts);
     virtual ~MsgToByteAdapter();
-
-    /// Set execution loop for timeout handling.
-    void setExecLoop(EventLoop* loop)
-    {
-        m_loop = loop;
-    }
 
     // MsgEtherIf methods.
     /// Send a message to the ether.
@@ -65,23 +59,38 @@ class MsgToByteAdapter : public MsgEtherIf, public ByteEtherIf::RxIf
     void setByteIf(ByteEtherIf* beIf);
 
   private:
+    class ByteReceiver : public ByteEtherIf::RxIf
+    {
+      public:
+        ByteReceiver(MsgToByteAdapter* p) : m_p(p)
+        {
+        }
+
+      private:
+        virtual void receiveBytes(const gsl::span<gsl::byte>& bytes) override
+        {
+            m_p->receiveBytes(bytes);
+        }
+        MsgToByteAdapter* m_p;
+    };
+
     /// Return the current time from react.
     double now() const
     {
-        return m_loop->now();
+        return m_ts.now();
     }
 
     void checkTimeout();
 
-    void receiveBytes(const gsl::span<gsl::byte>& bytes) override;
+    void receiveBytes(const gsl::span<gsl::byte>& bytes);
 
-    // Receive a byte from the byte interface.
-    void newByte(gsl::byte byte);
+    // Helper class to receive data from the serial channel.
+    ByteReceiver m_br;
 
     ByteEtherIf* m_beIf = nullptr;
     MsgEtherIf::RxIf* m_cb = nullptr;
     FrameCodec m_codec;
-    EventLoop* m_loop = nullptr;
+    TimeServiceIf& m_ts;
 
     /// Timepoint when the byte was received.
     double m_lastUpdate = 0.0;

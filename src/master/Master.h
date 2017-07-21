@@ -28,7 +28,6 @@
 #include "MasterFSM.h"
 #include "MasterPacketTx.h"
 #include "MasterScheduler.h"
-#include "MasterUtils.h"
 
 #include "core/PacketTypeCodec.h"
 
@@ -45,7 +44,8 @@ class Config;
 class Master : MasterPacketIf::RxIf
 {
   public:
-    Master(EventLoop& loop, MasterPacketIf* mr, MasterTxIf* mt, Config* cfg);
+    Master(TimeServiceIf& ts, MasterPacketIf* mr,
+           MasterTxIf* mt, Config* cfg);
 
     ~Master();
 
@@ -58,15 +58,13 @@ class Master : MasterPacketIf::RxIf
     masterPacketReceived(MessageType type,
                          const MsgEtherIf::EtherPkt& packet) override;
 
-    EventLoop& m_loop;
     MasterPacketIf* m_masterRx;
 
     Config* m_config;
     MasterPacketTx m_tx;
-    MasterScheduler m_scheduler;
-    DynamicHandler m_dynamicHandler;
     ActionHandler m_actionHandler;
-    MasterHSM m_fsm;
+    DynamicHandler m_dynamicHandler;
+    MasterFSM m_fsm;
 };
 
 #endif /* SRC_CORE_MASTER_H_ */

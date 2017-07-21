@@ -35,13 +35,13 @@
  */
 enum class MessageType : uint8_t
 {
-    grant_token,
+    grant_token, // 0
     return_token,
     master_started,
     master_ended,
     send_packet,
-    mac_update,
-    address_discovery,
+    mac_update,        // 5
+    address_discovery, // 6
     address_request,
     address_reply
 };
@@ -63,6 +63,28 @@ operator<<(std::ostream& os, MessageType msgType)
 {
     return os << static_cast<int>(msgType);
 }
+
+static inline std::string
+toString(MessageType mt)
+{
+#define CASE(x) case MessageType::x: return #x
+	switch(mt)
+	{
+	CASE(grant_token);
+	CASE(return_token);
+	CASE(master_started);
+	CASE(master_ended);
+	CASE(send_packet);
+	CASE(mac_update);
+	CASE(address_discovery);
+	CASE(address_request);
+	CASE(address_reply);
+	}
+	return "";
+#undef CASE
+}
+
+
 
 /**
  * Address allocations:
@@ -123,9 +145,17 @@ toHeader(gsl::byte* b)
 
 template <typename HeaderType>
 inline const HeaderType*
+toHeader(const gsl::byte* b)
+{
+    return static_cast<const HeaderType*>(static_cast<const void*>(b));
+}
+
+template <typename HeaderType>
+inline const HeaderType*
 toHeader(const MsgEtherIf::EtherPkt& p)
 {
-    return static_cast<const HeaderType*>(static_cast<const void*>(p.data()));
+    assert(p.size() >= (int)sizeof(HeaderType));
+    return toHeader<HeaderType>(p.data());
 }
 
 template <typename HeaderType>
@@ -140,6 +170,10 @@ fromHeader(const HeaderType& header)
 
 struct GrantToken
 {
+    GrantToken(LocalAddress tr)
+        : m_type(MessageType::grant_token), m_tokenReceiver(tr)
+    {
+    }
     MessageType m_type;
     LocalAddress m_tokenReceiver;
 };

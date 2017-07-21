@@ -24,13 +24,7 @@
 
 #include "SNConfig.h"
 
-SNConfig::SNConfig()
-{
-}
-
-SNConfig::~SNConfig()
-{
-}
+#include "utility/Log.h"
 
 std::string
 SNConfig::toString(Mode mode)
@@ -48,6 +42,8 @@ SNConfig::toString(Mode mode)
         CASE(socat_tun);
         CASE(socat_tap);
         CASE(tap);
+        CASE(setup_tap);
+        CASE(remove_tap);
         CASE(mode_max_num);
     }
     return "";
@@ -69,9 +65,11 @@ SNConfig::toMode(std::string mode)
     IF_MODE(std_in)
     IF_MODE(std_out)
     IF_MODE(std_io)
-    IF_MODE(socat_tun) //
-    IF_MODE(socat_tap) //
-    IF_MODE(tap)       //
+    IF_MODE(socat_tun)  //
+    IF_MODE(socat_tap)  //
+    IF_MODE(tap)        //
+    IF_MODE(setup_tap)  //
+    IF_MODE(remove_tap) //
     {
         return Mode::unknown;
     }
@@ -116,4 +114,64 @@ SNConfig::toString(RtsOptions option)
         CASE(rs485_te);
     }
     return "";
+}
+
+void
+SNConfig::setupSNConfig(boost::program_options::variables_map& vm)
+{
+    m_etherPath = vm.count("serial-device") > 0
+                      ? vm["serial-device"].as<std::string>()
+                      : "";
+    m_mode = toMode(vm["mode"].as<std::string>());
+
+    m_on_if_up = vm["on-if-up"].as<std::string>();
+    m_on_if_down = vm["on-if-down"].as<std::string>();
+
+    m_startMaster = vm.count("master") > 0;
+
+    m_rtsOption = SNConfig::toOption(vm["serial-options"].as<std::string>());
+    m_user = vm["user"].as<std::string>();
+    m_group = vm["group"].as<std::string>();
+    m_tapName = vm["tap-name"].as<std::string>();
+
+    if (vm.count("wsdump") > 0)
+    {
+        m_wsDumpPath = vm["wsdump"].as<std::string>();
+    }
+
+    int myAddr = vm["address"].as<int>();
+
+    if (myAddr < 0 || myAddr > 32)
+    {
+        LOG_ERROR << "Illegal local address " << myAddr;
+        throw std::runtime_error("Illegal static address.");
+    }
+    if (myAddr == 0 && m_startMaster)
+    {
+        myAddr = 1;
+    }
+    m_staticAddr = static_cast<LocalAddress>(myAddr);
+
+    LOG_INFO << "mode: " << SNConfig::toString(m_mode);
+    LOG_INFO << "addr: " << myAddr;
+
+    auto destAddr = LocalAddress::broadcast;
+
+    if (m_mode == SNConfig::Mode::std_in)
+    {
+        if (vm.count("dest_address") != 1)
+        {
+            LOG_ERROR << "Need a destination address for mode std_in.";
+            throw std::runtime_error("destination address.");
+        }
+        else
+        {
+            destAddr = vm["dest_address"].as<LocalAddress>();
+        }
+    }
+
+    LOG_INFO << "Got dest addr: " << destAddr;
+    m_destAddr = static_cast<LocalAddress>(destAddr);
+
+    m_masterTimeout = vm["mtimeout"].as<int>();
 }

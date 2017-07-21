@@ -29,13 +29,8 @@ void
 MasterPacketTx::sendToken(LocalAddress destAddr)
 {
     LOG_TRACE << "Send token to: " << int(destAddr);
-    ByteVec packet;
-    packet.resize(2);
-    packet::GrantToken* p =
-        reinterpret_cast<packet::GrantToken*>(packet.data());
-    p->m_type = MessageType::grant_token;
-    p->m_tokenReceiver = destAddr;
-    m_masterTx->sendMasterPacket(MsgEtherIf::EtherPkt(packet));
+    packet::GrantToken p(destAddr);
+    m_masterTx->sendMasterPacket(packet::fromHeader(p));
 }
 
 void

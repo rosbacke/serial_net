@@ -24,7 +24,8 @@
 
 #include "MsgToByteAdapter.h"
 
-MsgToByteAdapter::MsgToByteAdapter()
+MsgToByteAdapter::MsgToByteAdapter(TimeServiceIf& ts)
+    : m_br(this), m_ts(ts)
 {
 }
 
@@ -50,7 +51,8 @@ MsgToByteAdapter::setByteIf(ByteEtherIf* beIf)
     m_beIf = beIf;
     if (m_beIf)
     {
-        m_beIf->addClient(this);
+        m_codec.reset();
+        m_beIf->addClient(&m_br);
     }
 }
 
@@ -73,17 +75,9 @@ MsgToByteAdapter::receiveBytes(const gsl::span<gsl::byte>& bytes)
 }
 
 void
-MsgToByteAdapter::newByte(gsl::byte byte)
-{
-    checkTimeout();
-    m_lastUpdate = now();
-    m_codec.decodeByte(byte);
-}
-
-void
 MsgToByteAdapter::checkTimeout()
 {
-    if (m_loop && m_codec.rxInProgress())
+    if (m_codec.rxInProgress())
     {
         auto now_ = now();
         if (now_ - m_lastUpdate > 0.1)

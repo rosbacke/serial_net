@@ -28,12 +28,20 @@
 #include "interfaces/SerialProtocol.h"
 #include <vector>
 
-#include "../eventwrapper/EventLoop.h"
+#include "AddressLine.h"
+#include "eventwrapper/EventLoop.h"
+#include "master/DynamicAddress.h"
+#include "utility/Timer.h"
+
+#include "interfaces/TimeServiceIf.h"
 
 class Config;
 class MasterScheduler;
 class MasterPacketTx;
 class ActionHandler;
+class AddressLine;
+class TimeServiceIf;
+
 
 /**
  * Responsible for implementing the logic regarding Dynamic address
@@ -42,48 +50,53 @@ class ActionHandler;
 class DynamicHandler
 {
   public:
-    DynamicHandler(EventLoop& loop, Config* cfg, MasterScheduler* ms,
-                   MasterPacketTx* tx);
+    using UniqueId = packet::UniqueId;
+
+    DynamicHandler(TimeServiceIf& ts, Config* cfg, MasterPacketTx* tx);
     ~DynamicHandler();
 
-    void setActionHandler(ActionHandler* ah)
+    void start();
+
+    void setAH(ActionHandler* ah)
     {
         m_ah = ah;
     }
 
+    // Report back that the last address discovery has finished.
+    void addressDiscoveryIsDone();
+
     void receivedAddressRequest(const packet::AddressRequest& aReq);
 
-    using UniqueId = packet::UniqueId;
-    struct DynamicAddr
-    {
-        DynamicAddr(UniqueId uniqueId, LocalAddress local)
-            : m_uniqueId(uniqueId), m_local(local)
-        {
-        }
+    void updateAddressLine(LocalAddress addr, AddressLine::State newState);
 
-        UniqueId m_uniqueId;
-        LocalAddress m_local;
-    };
-
-    void releaseAddress(LocalAddress local);
+    double nextTime(AddressLine::State state);
 
   private:
     LocalAddress allocAddress(UniqueId id);
 
-    EventLoop& m_loop;
+    AddressLine* findLine(UniqueId id);
+    AddressLine* findLine(LocalAddress address);
+
+    void removeLine(AddressLine* line);
+
+    int m_minAddr;
+    int m_maxAddr;
+
+    TimeServiceIf& m_ts;
+    // EventLoop& m_loop;
 
     // Set of currently free addresses.
     std::vector<LocalAddress> m_freeAddresses;
 
-    DynamicAddr* find(LocalAddress local);
-    DynamicAddr* find(UniqueId id);
+    std::vector<AddressLine> m_table;
 
-    // Set of currently active dynamically allocated
-    std::vector<DynamicAddr> m_allocAddresses;
-
-    MasterScheduler* m_scheduler = nullptr;
     MasterPacketTx* m_tx = nullptr;
     ActionHandler* m_ah = nullptr;
+
+
+    TimeServiceIf::Timer m_timer;
+    //Timer m_pollTimer;
+    Config* m_config = nullptr;
 };
 
 #endif /* SRC_MASTER_DYNAMICHANDLER_H_ */

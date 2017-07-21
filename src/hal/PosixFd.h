@@ -39,6 +39,11 @@ class PosixFd
     {
     }
 
+    PosixFd(PosixFd&& fd) : m_fd(fd.m_fd), m_posixIf(fd.m_posixIf)
+    {
+        fd.m_fd = -1;
+    }
+
     static PosixFd makeFd(int fd, PosixFileIf* pf)
     {
         return PosixFd(fd, pf);
@@ -62,6 +67,7 @@ class PosixFd
     ~PosixFd();
 
   private:
+    PosixFd(const PosixFd& fd) = delete;
     PosixFd(int fd, PosixFileIf* posixIf) : m_fd(fd), m_posixIf(posixIf)
     {
     }

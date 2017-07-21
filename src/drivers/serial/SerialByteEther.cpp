@@ -43,13 +43,13 @@
 
 using namespace gsl;
 
-SerialByteEther::SerialByteEther(const std::string& device, SerialHal hal,
-                                 RtsOptions rts)
-    : m_fd(hal.m_file), m_rxCB(nullptr), m_hal(hal)
+SerialByteEther::SerialByteEther(const std::string& device, PosixFileIf* file,
+                                 PosixSleepIf* sleep, PosixSerialIf* serial)
+    : m_fd(file), m_rxCB(nullptr), m_file(file), m_sleep(sleep),
+      m_serial(serial)
 {
     LOG_DEBUG << "start setup";
     setup(device);
-    setupRts(rts);
     LOG_DEBUG << "end setup";
 }
 
@@ -74,10 +74,10 @@ void
 SerialByteEther::sendBytes(const gsl::span<const gsl::byte>& bytes)
 {
     auto len = bytes.size();
-    int res = m_hal.m_file->write(m_fd, bytes.data(), len);
+    int res = m_file->write(m_fd, bytes.data(), len);
     if (res == len)
     {
-        LOG_TRACE << "Wrote " << len << " byte(s)";
+        LOG_TRACE << "Wrote " << len << " byte(s) to serial.";
         return;
     }
     LOG_ERROR << "Failed to write all serial bytes.";
@@ -94,8 +94,9 @@ SerialByteEther::addClient(ByteEtherIf::RxIf* cb)
 bool
 SerialByteEther::readSerial()
 {
-    gsl::byte rxBuf[256];
-    ssize_t size = m_hal.m_file->read(m_fd, &rxBuf, 256);
+	const int readBufSize = 2048;
+    gsl::byte rxBuf[readBufSize];
+    ssize_t size = m_file->read(m_fd, &rxBuf, readBufSize);
     if (size > 0 && m_rxCB != nullptr)
     {
         LOG_TRACE << "Read " << size << " bytes.";
@@ -116,7 +117,7 @@ SerialByteEther::setup(const std::string& deviceName)
 {
     using ps = PosixSerialUtils;
 
-    m_fd.set(m_hal.m_file->open(deviceName.c_str(), O_RDWR | O_NONBLOCK));
+    m_fd.set(m_file->open(deviceName.c_str(), O_RDWR | O_NONBLOCK));
     if (m_fd <= 0)
     {
         LOG_ERROR << "Failed to open serial device: " << deviceName
@@ -124,7 +125,7 @@ SerialByteEther::setup(const std::string& deviceName)
         throw std::runtime_error("Failed opening serial port.");
     }
 
-    ps::set8N1Termios(*m_hal.m_serial, m_fd, ps::Baudrate::BR_115200);
+    ps::set8N1Termios(*m_serial, m_fd, ps::Baudrate::BR_115200);
 }
 
 void
@@ -137,20 +138,20 @@ SerialByteEther::setupRts(RtsOptions rts)
     case RtsOptions::None:
         break;
     case RtsOptions::pulldown:
-        ps::setRTS(*m_hal.m_serial, m_fd, ps::IOState::negated);
+        ps::setRTS(*m_serial, m_fd, ps::IOState::negated);
 
         // Seems like setting the RTS happens to late and result in a
         // ghost byte being generated. Wait a while to let it settle and read it
         // Should be fine since we do not promise serial services until the
         // setup
         // exits.
-        m_hal.m_sleep->usleep(20000);
+        m_sleep->usleep(20000);
         uint8_t buf[4];
-        m_hal.m_file->read(m_fd, buf, 4);
+        m_file->read(m_fd, buf, 4);
         break;
 
     case RtsOptions::rs485_te:
-        ps::setRS485Mode(*m_hal.m_serial, m_fd, true, true);
+        ps::setRS485Mode(*m_serial, m_fd, true, true);
         break;
     }
 }

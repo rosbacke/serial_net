@@ -30,7 +30,7 @@
 #include "hal/PosixFd.h"
 #include "hal/PosixIf.h"
 
-#include "../../eventwrapper/EventLoop.h"
+#include "eventwrapper/EventLoop.h"
 #include <string>
 
 class PosixFileIf;
@@ -42,18 +42,6 @@ class PosixFileIf;
 class SerialByteEther : public ByteEtherIf
 {
   public:
-    class SerialHal
-    {
-      public:
-        SerialHal(PosixFileIf* file, PosixSleepIf* sleep, PosixSerialIf* serial)
-            : m_file(file), m_sleep(sleep), m_serial(serial)
-        {
-        }
-        PosixFileIf* m_file;
-        PosixSleepIf* m_sleep;
-        PosixSerialIf* m_serial;
-    };
-
     enum class RtsOptions
     {
         None,
@@ -61,14 +49,16 @@ class SerialByteEther : public ByteEtherIf
         rs485_te
     };
 
-    SerialByteEther(const std::string& device, SerialHal hal,
-                    RtsOptions rts = RtsOptions::None);
+    SerialByteEther(const std::string& device, PosixFileIf* file,
+                    PosixSleepIf* sleep, PosixSerialIf* serial);
     virtual ~SerialByteEther();
+
+    void setupRts(RtsOptions rts);
 
     // Set up callback based reading when data is available.
     void registerReadCB(EventLoop* mainLoop);
 
-    // Send a byte to the ether.
+    // Send a byte to the ether. Will throw if we fail to write the data.
     virtual void sendBytes(const gsl::span<const gsl::byte>& bytes) override;
 
     // Register a receiver.
@@ -84,11 +74,12 @@ class SerialByteEther : public ByteEtherIf
 
     void setup(const std::string& device);
 
-    void setupRts(RtsOptions rts);
-
     PosixFd m_fd;
     ByteEtherIf::RxIf* m_rxCB;
-    SerialHal m_hal;
+
+    PosixFileIf* m_file = nullptr;
+    PosixSleepIf* m_sleep = nullptr;
+    PosixSerialIf* m_serial = nullptr;
 };
 
 #endif /* SRC_DRIVERS_SERIAL_SERIALBYTEETHER_H_ */

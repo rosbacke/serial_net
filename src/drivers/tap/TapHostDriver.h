@@ -26,6 +26,7 @@
 #define SRC_DRIVERS_TAP_TAPHOSTDRIVER_H_
 
 #include "TapProtocol.h"
+#include "TunTapDriver.h"
 #include "eventwrapper/EventLoop.h"
 #include "hal/PosixFd.h"
 #include "interfaces/MsgHostIf.h"
@@ -36,9 +37,15 @@ class PosixTunTapIf;
 class TapHostDriver : public MsgHostIf::RxIf, public MsgHostIf::AddrChange
 {
   public:
-    TapHostDriver(AddressCache* ac, PosixFileIf* pfi, PosixTunTapIf* ptti,
-                  const std::string& on_if_up, const std::string& on_if_down);
+    TapHostDriver(AddressCache* ac, PosixFileIf* pfi,
+                  std::unique_ptr<TunTapDriver>&& ttd);
     virtual ~TapHostDriver();
+
+    void setIfEventCommands(std::string onUp, std::string onDown)
+    {
+        m_on_if_up = onUp;
+        m_on_if_down = onDown;
+    }
 
     void startTransfer(MsgHostIf* txIf, EventLoop& loop);
 
@@ -48,25 +55,26 @@ class TapHostDriver : public MsgHostIf::RxIf, public MsgHostIf::AddrChange
     virtual void packetReceived(const ByteVec& data, LocalAddress srcAddr,
                                 LocalAddress destAddr) override
     {
-        m_tap.packetReceived(m_tun_fd, data, srcAddr, destAddr);
+        m_tap.packetReceived(m_tap_fd, data, srcAddr, destAddr);
     }
 
-    static void setTapIfUpDown(PosixTunTapIf* posix, bool up);
+    static void setTapIfUpDown(PosixFileIf* posixFile, PosixTunTapIf* posixTun,
+                               bool up);
 
     void msgHostRx_newAddr(LocalAddress addr) final;
 
-  private:
-    int tun_alloc(std::string& dev, unsigned tunFlags);
-
     void setupCallback(EventLoop& mainLoop);
+
+  private:
     TapProtocol m_tap;
 
-    PosixFd m_tun_fd;
+    PosixFd m_tap_fd;
     PosixFileIf* m_pfi;
-    PosixTunTapIf* m_ptti;
     std::string m_on_if_up;
     std::string m_on_if_down;
     bool m_ifUp = false;
+    std::unique_ptr<TunTapDriver> m_tunTapDriver;
+    std::string m_tapName = "tap0";
 };
 
 #endif /* SRC_DRIVERS_TAP_TAPHOSTDRIVER_H_ */

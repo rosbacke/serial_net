@@ -16,26 +16,18 @@
  */
 
 /*
- * MasterUtils.cpp
+ * Timer.cpp
  *
- *  Created on: 12 nov. 2016
+ *  Created on: 10 juli 2017
  *      Author: mikaelr
  */
 
-#include "MasterUtils.h"
-// #include "Timer.h"
+#include "Timer.h"
+
 #include "utility/Log.h"
 #include <memory>
 
-MasterUtils::MasterUtils()
-{
-    // TODO Auto-generated constructor stub
-}
-
-MasterUtils::~MasterUtils()
-{
-    // TODO Auto-generated destructor stub
-}
+#include "eventwrapper/EventLoop.h"
 
 Timer::Timer(EventLoop& loop) : m_loop(loop)
 {

@@ -99,7 +99,7 @@ class Config
      */
     double masterTokenClientTimeout() const
     {
-        return 0.05;
+        return 0.08;
     }
 
     /**

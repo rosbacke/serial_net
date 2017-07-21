@@ -23,13 +23,3 @@
  */
 
 #include "MasterScheduler.h"
-
-MasterScheduler::MasterScheduler()
-{
-    // TODO Auto-generated constructor stub
-}
-
-MasterScheduler::~MasterScheduler()
-{
-    // TODO Auto-generated destructor stub
-}

@@ -16,32 +16,42 @@
  */
 
 /*
- * SerialHalReal2.h
+ * TunTapDriver.h
  *
- *  Created on: 29 okt. 2016
+ *  Created on: 4 juli 2017
  *      Author: mikaelr
  */
 
-#ifndef SRC_HAL_SERIALHALREAL_H_
-#define SRC_HAL_SERIALHALREAL_H_
+#ifndef SRC_DRIVERS_TAP_TUNTAPDRIVER_H_
+#define SRC_DRIVERS_TAP_TUNTAPDRIVER_H_
 
-#include "PosixFileReal.h"
-#include "PosixSerialReal.h"
-#include "PosixSleepReal.h"
-#include "drivers/serial/SerialByteEther.h"
+#include <string>
 
-class SerialHalReal
+class PosixFileIf;
+class PosixTunTapIf;
+
+class TunTapDriver
 {
   public:
-    PosixFileReal m_file;
-    PosixSleepReal m_sleep;
-    PosixSerialReal m_serial;
-
-    SerialByteEther::SerialHal get()
+    enum class IfType
     {
-        SerialByteEther::SerialHal ser(&m_file, &m_sleep, &m_serial);
-        return ser;
-    }
+        tun,
+        tap
+    };
+    TunTapDriver(PosixFileIf* pfi, PosixTunTapIf* ptti);
+    ~TunTapDriver();
+
+    int tuntap_alloc(std::string& dev, IfType type = IfType::tap);
+
+    void setUserGroup(int fd, std::string user = "", std::string group = "");
+
+    void setIfUpDown(bool up, std::string tapName);
+
+    void persist(int fd, bool persist);
+
+  private:
+    PosixFileIf* m_pfi;
+    PosixTunTapIf* m_ptti;
 };
 
-#endif /* SRC_HAL_SERIALHALREAL_H_ */
+#endif /* SRC_DRIVERS_TAP_TUNTAPDRIVER_H_ */

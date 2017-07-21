@@ -35,83 +35,66 @@ using namespace gsl;
 namespace
 {
 
-class MasterStateBase : public StateBase<MasterHSM>
+class MasterStateBase : public StateBase<MasterFSM>
 {
   protected:
     const Config* m_config = nullptr;
-    Master* m_master = nullptr;
 
-    MasterStateBase(MasterHSM& hsm)
-        : StateBase(hsm), m_config(hsm.m_config), m_master(hsm.m_master)
+    MasterStateBase(StateArgs args) : StateBase(args), m_config(fsm().m_config)
     {
     }
 
     void startTimer(double interval)
     {
-        hsm().m_timer.makeTimeout(interval, [&]() {
+        fsm().m_timer = fsm().m_ts.makeTimeout(interval, [&]() {
             LOG_TRACE << "Timeout expired, post event.";
-            hsm().postEvent(Event::Id::timer_timeout);
+            fsm().postEvent(Event::Id::timer_timeout);
         });
     }
 
     void startTimerAbs(double timepoint)
     {
-        hsm().m_timer.makeTimeoutAbs(timepoint, [&]() {
+        fsm().m_timer = fsm().m_ts.makeTimeoutAbs(timepoint, [&]() {
             LOG_TRACE << "Timepoint passed, post event.";
-            hsm().postEvent(Event::Id::timer_timeout);
+            fsm().postEvent(Event::Id::timer_timeout);
         });
     }
 
     void cleanTimer()
     {
-        hsm().m_timer.cleanTimeout();
-    }
-};
-
-class Init : public MasterStateBase
-{
-  public:
-    Init(MasterHSM& fsm) : MasterStateBase(fsm)
-    {
-        fsm.m_master->m_tx.sendMasterStart();
+        fsm().m_timer.cancel();
     }
 
-    bool event(const Event& ev)
+    const MasterFSM::Remotes& call()
     {
-        switch (ev.m_id)
-        {
-        case Event::Id::init:
-            transition(StateId::idle);
-            return true;
-            break;
-        default:
-            break;
-        }
-        return false;
+        return fsm().m_remotes;
     }
 };
 
 class Idle : public MasterStateBase
 {
   public:
-    Idle(MasterHSM& hsm) : MasterStateBase(hsm)
+    Idle(StateArgs args) : MasterStateBase(args)
     {
-        nextAction();
+        // LOG_DEBUG << "Enter Idle.";
     }
 
     ~Idle()
     {
-        cleanTimer();
+        // LOG_DEBUG << "Leaving Idle.";
+        // cleanTimer();
     }
 
     bool event(const Event& ev)
     {
         switch (ev.m_id)
         {
-        case Event::Id::timer_timeout:
-            transition(StateId::idle);
+        case Event::Id::check_new_command:
+            // LOG_DEBUG << "Idle: check_new_command.";
+            decodeAction(fsm().currentAction());
             return true;
             break;
+
         default:
             break;
         }
@@ -119,41 +102,44 @@ class Idle : public MasterStateBase
     }
 
   private:
-    void nextAction()
+    void decodeAction(const Action& action)
     {
         using Cmd = Action::Cmd;
-        auto action = m_master->m_actionHandler.nextAction();
-        LOG_DEBUG << "Next action:" << ::toString(action.m_action)
-                  << " addr:" << action.m_address
-                  << " time: " << action.m_nextTime;
+
+        {
+                        LOG_DEBUG << "Next action:" <<
+                        Action::toString(action.m_action)
+                                  << " addr:" << action.m_address;
+        }
+
         switch (action.m_action)
         {
-        case Cmd::delay:
-            startTimerAbs(action.m_nextTime);
+        case Cmd::do_nothing:
             break;
+
         case Cmd::send_token:
         {
             auto addr = action.m_address;
-            if (addr == m_master->m_tx.clientAddress())
+            if (addr == call().m_tx->clientAddress())
             {
-                LOG_TRACE << "Give token to own client.";
-                if (m_master->m_tx.txQueueEmpty())
+                // LOG_TRACE << "Give token to own client.";
+                if (call().m_tx->txQueueEmpty())
                 {
                     // Client do not have anything to send.
-                    m_master->m_actionHandler.gotReturnToken();
-                    transition(StateId::idle);
+                    fsm().reportActionResult(
+                        Action::ReturnValue::rx_token_no_packet);
                 }
                 else
                 {
                     // Client is sending.
-                    m_master->m_tx.sendClientPacket();
+                    call().m_tx->sendClientPacket();
                     transition(StateId::waitClientPacketDone);
                 }
             }
             else
             {
                 // Send token to some other client.
-                m_master->m_tx.sendToken(addr);
+                call().m_tx->sendToken(addr);
                 transition(StateId::sendingToken);
             }
             break;
@@ -161,14 +147,57 @@ class Idle : public MasterStateBase
         case Cmd::query_address:
             transition(StateId::queryAddress);
             break;
+
+        case Cmd::send_master_start:
+            transition(StateId::startMaster);
+            break;
         }
+    }
+};
+
+class MasterStart : public MasterStateBase
+{
+  public:
+    MasterStart(StateArgs args) : MasterStateBase(args)
+    {
+        call().m_tx->sendMasterStart();
+        startTimer(0.1);
+    }
+
+    ~MasterStart()
+    {
+        cleanTimer();
+    }
+
+    bool event(const Event& event)
+    {
+        auto ev = event.m_id;
+        switch (ev)
+        {
+        case Event::Id::rx_pkt_master_start_stop:
+            fsm().reportActionResult(Action::ReturnValue::ok);
+            transition(StateId::idle);
+            return true;
+
+        case Event::Id::timer_timeout:
+            // Timeout. We should have received the master start packet
+            // by now.
+            LOG_WARN << "Did not detect my own transmission of start master.";
+            fsm().reportActionResult(Action::ReturnValue::timeout);
+            transition(StateId::idle);
+            return true;
+
+        default:
+            break;
+        }
+        return false;
     }
 };
 
 class SendingToken : public MasterStateBase
 {
   public:
-    SendingToken(MasterHSM& hsm) : MasterStateBase(hsm)
+    SendingToken(StateArgs args) : MasterStateBase(args)
     {
         startTimer(m_config->masterTokenGrantTx2RxTime());
     }
@@ -183,7 +212,7 @@ class SendingToken : public MasterStateBase
         auto ev = event.m_id;
         switch (ev)
         {
-        case Event::Id::rx_grant_token:
+        case Event::Id::rx_pkt_grant_token:
             transition(StateId::waitClientPacketDone);
             return true;
 
@@ -204,7 +233,7 @@ class SendingToken : public MasterStateBase
 class WaitClientPacketDoneState : public MasterStateBase
 {
   public:
-    WaitClientPacketDoneState(MasterHSM& hsm) : MasterStateBase(hsm)
+    WaitClientPacketDoneState(StateArgs args) : MasterStateBase(args)
     {
         startTimer(m_config->masterTokenClientTimeout());
     }
@@ -219,26 +248,27 @@ class WaitClientPacketDoneState : public MasterStateBase
         auto ev = event.m_id;
         switch (ev)
         {
-        case Event::Id::rx_client_packet:
-            m_master->m_actionHandler.packetStarted();
+        case Event::Id::rx_pkt_client_packet:
+            fsm().reportActionResult(
+                Action::ReturnValue::client_packet_started);
             transition(StateId::idle);
             return true;
 
         case Event::Id::rx_return_token:
             // Client got nothing to send. Move on.
-            m_master->m_actionHandler.gotReturnToken();
+            fsm().reportActionResult(Action::ReturnValue::rx_token_no_packet);
             transition(StateId::idle);
             return true;
 
         case Event::Id::timer_timeout:
-            if (m_master->m_masterRx->packetRxInProgress())
+            if (call().m_rx->packetRxInProgress())
             {
                 startTimer(m_config->masterTokenClientTimeout());
             }
             else
             {
                 // Timeout. Assume the client isn't there. move on.
-                m_master->m_actionHandler.tokenTimeout();
+                fsm().reportActionResult(Action::ReturnValue::token_timeout);
                 transition(StateId::idle);
             }
             return true;
@@ -252,10 +282,10 @@ class WaitClientPacketDoneState : public MasterStateBase
 class QueryAddressState : public MasterStateBase
 {
   public:
-    QueryAddressState(MasterHSM& hsm) : MasterStateBase(hsm)
+    QueryAddressState(StateArgs args) : MasterStateBase(args)
     {
         startTimer(m_config->masterTokenClientTimeout());
-        m_master->m_tx.sendAddressDiscovery();
+        call().m_tx->sendAddressDiscovery();
     }
 
     ~QueryAddressState()
@@ -269,7 +299,7 @@ class QueryAddressState : public MasterStateBase
         switch (ev)
         {
         case Event::Id::timer_timeout:
-            if (m_master->m_masterRx->packetRxInProgress())
+            if (call().m_rx->packetRxInProgress())
             {
                 // Somebody has started to respond. Wait a bit more.
                 startTimer(m_config->masterTokenClientTimeout());
@@ -277,13 +307,14 @@ class QueryAddressState : public MasterStateBase
             }
             else
             {
-                m_master->m_actionHandler.addressQueryDone();
+                fsm().reportActionResult(
+                    Action::ReturnValue::address_query_done);
                 transition(StateId::idle);
             }
             return true;
 
-        case Event::Id::rx_address_request:
-            m_master->m_dynamicHandler.receivedAddressRequest(
+        case Event::Id::rx_pkt_address_request:
+            call().m_dh->receivedAddressRequest(
                 boost::get<packet::AddressRequest>(event.eventData));
 
             // Got a request from a client. Process it.
@@ -300,7 +331,7 @@ class QueryAddressState : public MasterStateBase
 class WaitAddressReply : public MasterStateBase
 {
   public:
-    WaitAddressReply(MasterHSM& hsm) : MasterStateBase(hsm)
+    WaitAddressReply(StateArgs args) : MasterStateBase(args)
     {
         startTimer(m_config->masterTokenClientTimeout());
     }
@@ -308,7 +339,7 @@ class WaitAddressReply : public MasterStateBase
     ~WaitAddressReply()
     {
         cleanTimer();
-        m_master->m_actionHandler.addressQueryDone();
+        fsm().reportActionResult(Action::ReturnValue::address_query_done);
     }
 
     bool event(const Event& event)
@@ -317,13 +348,14 @@ class WaitAddressReply : public MasterStateBase
         switch (ev)
         {
         case Event::Id::timer_timeout:
-            if (m_master->m_masterRx->packetRxInProgress())
+            if (call().m_rx->packetRxInProgress())
             {
                 // Still sending addressReply
                 startTimer(m_config->masterTokenClientTimeout());
             }
             else
             {
+                // Report back in destructor.
                 transition(StateId::idle);
             }
             return true;
@@ -337,13 +369,36 @@ class WaitAddressReply : public MasterStateBase
 
 } // anonymous namespace.
 
-MasterHSM::MasterHSM(Master* master, Config* config, EventLoop& loop)
-    : m_master(master), m_config(config), m_timer(loop)
+MasterFSM::MasterFSM(TimeServiceIf& ts, MasterPacketIf* rx, MasterPacketTx* tx,
+                     DynamicHandler* dh, Config* config)
+    : m_ts(ts), m_remotes(rx, tx, dh), m_config(config), m_timer(), m_currentAction()
 {
-    addState<Init, StateId::init>();
     addState<Idle, StateId::idle>();
+    addState<MasterStart, StateId::startMaster>();
     addState<SendingToken, StateId::sendingToken>();
     addState<WaitClientPacketDoneState, StateId::waitClientPacketDone>();
     addState<QueryAddressState, StateId::queryAddress>();
     addState<WaitAddressReply, StateId::waitAddressReply>();
+}
+
+void
+MasterFSM::startAction(const Action& action)
+{
+    assert(!actionActive());
+    // LOG_DEBUG << "MasterFSM::startAction " <<
+    // Action::toString(action.m_action);
+    m_currentAction = action;
+    postEvent(Event::Id::check_new_command);
+};
+
+void
+MasterFSM::reportActionResult(Action::ReturnValue rv)
+{
+    // LOG_DEBUG << "ReportActionResult FSM :" << Action::toString(rv);
+    auto cb = m_currentAction.m_reportCB;
+    m_currentAction = Action::makeDoNothingAction();
+    if (cb)
+    {
+        cb(rv);
+    }
 }

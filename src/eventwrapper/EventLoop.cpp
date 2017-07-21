@@ -55,6 +55,12 @@ EventLoop::onTimeout(double delay, std::function<bool()> cb)
     return TimeoutWatcher::mkTimeoutWatch(delay, cb, m_loop);
 }
 
+std::shared_ptr<TimeoutWatcher>
+EventLoop::onAvailable(std::function<bool()> cb)
+{
+    return TimeoutWatcher::mkTimeoutWatch(0.0, cb, m_loop);
+}
+
 std::shared_ptr<SignalWatcher>
 EventLoop::onSignal(int signal, std::function<bool()> cb)
 {

@@ -39,6 +39,7 @@ class ClientAddress
     ClientAddress(TxQueue* txQueue);
     ~ClientAddress();
 
+    // Return current active local address.
     LocalAddress getAddr() const;
 
     void rxToken(const packet::GrantToken& packet);

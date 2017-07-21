@@ -29,11 +29,17 @@
 #include "AddressLine.h"
 #include "DynamicHandler.h"
 #include "interfaces/SerialProtocol.h"
+#include "interfaces/TimeServiceIf.h"
 #include "utility/Config.h"
+#include "utility/Timer.h"
 
 #include "MasterScheduler.h"
+
+#include <functional>
 #include <queue>
 #include <vector>
+
+class TimeServiceIf;
 
 /**
  * A table with all the active addresses that the master cares about.
@@ -45,48 +51,47 @@ class ActionHandler
     /**
      * Set up AddressTable.
      */
-    ActionHandler(EventLoop& loop, Config* cfg, MasterScheduler& ms,
-                  DynamicHandler* dh);
+    ActionHandler(TimeServiceIf& ts, Config* cfg,
+                  std::function<void(const Action& a)> triggerAction);
     ~ActionHandler(){};
 
-    void gotReturnToken();
+    void setDynamic(DynamicHandler* dh)
+    {
+        m_dynamic = dh;
+    }
+    // Query the next token action to perform. Main driver for events to be
+    // done.
+    // Action nextAction();
 
-    void tokenTimeout();
+    void reportActionResult(Action::ReturnValue rv);
 
-    // Report that the last sent out token resulted in a packet transmission.
-    void packetStarted();
+    void postActionNow(Action a)
+    {
+        a.m_reportCB = [&](Action::ReturnValue rv) {
+            this->reportActionResult(rv);
+        };
+        m_scheduler.addActionNow(a);
+    }
 
-    void addressQueryDone();
+    void postAction(Action a, double time)
+    {
+        a.m_reportCB = [&](Action::ReturnValue rv) {
+            this->reportActionResult(rv);
+        };
+        m_scheduler.addAction(a, time);
+    }
 
-    // Query the next token action to perform.
-    Action nextAction();
-
-    void addDynamic(LocalAddress local);
+    void checkNewAction();
 
   private:
-    void updateAddressLine(AddressLine::State newState);
-
-    void updateReadyQueue();
-
-    double nextTime(AddressLine::State state);
-
-    AddressLine* find(LocalAddress address);
-    void removeLine(AddressLine* line);
-
-    std::vector<AddressLine> m_table;
-
-    bool m_frontInProgress = false;
-
-    int m_minAddr;
-    int m_maxAddr;
-    EventLoop& m_loop;
+    TimeServiceIf& m_ts;
 
     Config* m_config;
-    MasterScheduler& m_scheduler;
-    DynamicHandler* m_dynamic;
+    MasterScheduler m_scheduler;
+    DynamicHandler* m_dynamic = nullptr;
+    std::function<void(const Action& a)> m_triggerNewAction = nullptr;
+    TimeServiceIf::Timer m_delayAction;
+    Action m_currentAction;
 };
-
-std::string
-toString(Action::Cmd state);
 
 #endif /* SRC_MASTER_ACTIONHANDLER_H_ */

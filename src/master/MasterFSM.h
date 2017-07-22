@@ -28,9 +28,9 @@
 #include "Action.h"
 #include "Event.h"
 #include "eventwrapper/EventLoop.h"
+#include "interfaces/TimeServiceIf.h"
 #include "utility/Timer.h"
 #include "utility/VecQueue.h"
-#include "interfaces/TimeServiceIf.h"
 
 #include "statechart/StateChart.h"
 
@@ -39,7 +39,6 @@ class MasterPacketIf;
 class MasterPacketTx;
 class DynamicHandler;
 class TimeServiceIf;
-
 
 class States
 {

@@ -43,7 +43,7 @@ SocatTapHostDriver::~SocatTapHostDriver()
 
 void
 SocatTapHostDriver::packetReceived(const ByteVec& data, LocalAddress srcAddr,
-                                   LocalAddress destAddr)
+                                   LocalAddress destAddr, ChannelType chType)
 {
     m_tap.packetReceived(STDOUT_FILENO, data, srcAddr, destAddr);
 }
@@ -53,7 +53,7 @@ SocatTapHostDriver::startTransfer(MsgHostIf* txIf, EventLoop& loop)
 {
     m_tap.setTx(txIf);
     setupCallback(loop);
-    txIf->setRxHandler(this);
+    txIf->setRxHandler(this, ChannelType::tap_format);
 }
 
 void

@@ -53,7 +53,8 @@ class TapHostDriver : public MsgHostIf::RxIf, public MsgHostIf::AddrChange
      * Called when a packet was received from the serial net.
      */
     virtual void packetReceived(const ByteVec& data, LocalAddress srcAddr,
-                                LocalAddress destAddr) override
+                                LocalAddress destAddr,
+                                ChannelType chType) override
     {
         m_tap.packetReceived(m_tap_fd, data, srcAddr, destAddr);
     }

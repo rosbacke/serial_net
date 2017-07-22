@@ -33,8 +33,8 @@
 using namespace std::string_literals;
 using namespace gsl;
 
-Master::Master(TimeServiceIf& ts, MasterPacketIf* mr,
-               MasterTxIf* mt, Config* cfg)
+Master::Master(TimeServiceIf& ts, MasterPacketIf* mr, MasterTxIf* mt,
+               Config* cfg)
     : m_masterRx(mr), m_config(cfg), m_tx(mt),
       m_actionHandler(ts, cfg, [&](const Action& a) { m_fsm.startAction(a); }),
       m_dynamicHandler(ts, cfg, &m_tx),
@@ -97,6 +97,7 @@ Master::masterPacketReceived(MessageType type,
         break;
 
     case MessageType::address_discovery:
+        LOG_TRACE << "Master: rx address discovery.";
         break;
 
     case MessageType::address_request:

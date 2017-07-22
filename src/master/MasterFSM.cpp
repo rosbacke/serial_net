@@ -107,9 +107,8 @@ class Idle : public MasterStateBase
         using Cmd = Action::Cmd;
 
         {
-                        LOG_DEBUG << "Next action:" <<
-                        Action::toString(action.m_action)
-                                  << " addr:" << action.m_address;
+            LOG_DEBUG << "Next action:" << Action::toString(action.m_action)
+                      << " addr:" << action.m_address;
         }
 
         switch (action.m_action)
@@ -371,7 +370,8 @@ class WaitAddressReply : public MasterStateBase
 
 MasterFSM::MasterFSM(TimeServiceIf& ts, MasterPacketIf* rx, MasterPacketTx* tx,
                      DynamicHandler* dh, Config* config)
-    : m_ts(ts), m_remotes(rx, tx, dh), m_config(config), m_timer(), m_currentAction()
+    : m_ts(ts), m_remotes(rx, tx, dh), m_config(config), m_timer(),
+      m_currentAction()
 {
     addState<Idle, StateId::idle>();
     addState<MasterStart, StateId::startMaster>();

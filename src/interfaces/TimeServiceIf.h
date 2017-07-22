@@ -48,14 +48,44 @@ class TimeServiceIf
         {
         }
 
-        Timer(std::shared_ptr<TimerImpl> timer) : m_timer(timer)
+        Timer(std::shared_ptr<TimerImpl>&& timer) : m_timer(timer)
         {
+        }
+
+        Timer(const Timer& timer) : m_timer(timer.m_timer)
+        {
+        }
+        Timer& operator=(Timer&& t)
+        {
+            std::swap(t.m_timer, m_timer);
+            t.m_timer.reset();
+            return *this;
+        }
+        Timer& operator=(const Timer& t)
+        {
+            Timer tt(t);
+            std::swap(tt.m_timer, m_timer);
+            return *this;
+        }
+
+        void swap(Timer& t)
+        {
+            std::swap(m_timer, t.m_timer);
+        }
+
+        ~Timer()
+        {
+            if (m_timer)
+            {
+                m_timer->cancel();
+            }
         }
 
         void cancel()
         {
             if (m_timer)
             {
+                m_timer->cancel();
                 m_timer.reset();
             }
         }

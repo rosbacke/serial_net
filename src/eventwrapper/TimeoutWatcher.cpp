@@ -23,3 +23,30 @@
  */
 
 #include "TimeoutWatcher.h"
+#include "EventLoop.h"
+
+TimeoutData::TimeoutData(EventLoop& ev) : m_loop(ev.m_loop)
+{
+}
+
+void
+TimeoutData::cancel()
+{
+    auto evTimeout = static_cast<struct ev_timer*>(this);
+    ev_timer_stop(m_loop, evTimeout);
+    m_active = false;
+}
+
+void
+TimeoutData::cb(struct ev_loop* loop, int revents)
+{
+    if (m_active)
+    {
+        cancel();
+        m_fkn();
+        if (m_watcher)
+        {
+            m_watcher->clear();
+        }
+    }
+}

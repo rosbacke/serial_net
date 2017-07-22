@@ -24,8 +24,7 @@
 
 #include "MsgToByteAdapter.h"
 
-MsgToByteAdapter::MsgToByteAdapter(TimeServiceIf& ts)
-    : m_br(this), m_ts(ts)
+MsgToByteAdapter::MsgToByteAdapter(TimeServiceIf& ts) : m_br(this), m_ts(ts)
 {
 }
 

@@ -87,6 +87,8 @@ class EventLoop
     void updateNow();
 
   private:
+    friend class TimeoutData;
+
     void setup();
 
     struct ev_loop* m_loop;

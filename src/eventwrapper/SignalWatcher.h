@@ -32,7 +32,7 @@ class SignalWatcher : ev_signal
 {
   public:
     static std::shared_ptr<SignalWatcher>
-    mkSignalWatch(int signal, std::function<bool()> fkn, struct ev_loop* loop)
+    mkSignalWatch(struct ev_loop* loop, int signal, std::function<bool()> fkn)
     {
         auto t = std::make_shared<SignalWatcher>(fkn);
         t->setup(signal, loop, t);

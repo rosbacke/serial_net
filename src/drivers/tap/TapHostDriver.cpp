@@ -49,7 +49,7 @@ TapHostDriver::startTransfer(MsgHostIf* txIf, EventLoop& loop)
     LOG_DEBUG << "startTransfer done";
     m_tap.setTx(txIf);
     setupCallback(loop);
-    txIf->setRxHandler(this);
+    txIf->setRxHandler(this, ChannelType::tap_format);
     txIf->setAddrUpdateHandler(this);
     msgHostRx_newAddr(txIf->msgHostTx_clientAddress());
 }

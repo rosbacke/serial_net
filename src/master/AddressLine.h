@@ -49,8 +49,12 @@ class AddressLine
     AddressLine(LocalAddress addr, State s, bool dynamic)
         : m_state(s), m_address(addr), m_isDynamic(dynamic){};
 
-    AddressLine(LocalAddress addr, State s, bool dynamic, UniqueId uid)
-        : m_state(s), m_address(addr), m_isDynamic(dynamic), m_uniqueId(uid){};
+    AddressLine(LocalAddress addr, State s, bool dynamic, UniqueId uid,
+                ChannelType ct)
+        : m_state(s), m_address(addr), m_isDynamic(dynamic), m_uniqueId(uid),
+          m_channelType(ct)
+    {
+    }
 
     ~AddressLine(){};
 
@@ -99,6 +103,7 @@ class AddressLine
     LocalAddress m_address;
     bool m_isDynamic = false;
     UniqueId m_uniqueId;
+    ChannelType m_channelType = ChannelType::illegal_type;
 };
 
 #endif /* SRC_MASTER_ADDRESSLINE_H_ */

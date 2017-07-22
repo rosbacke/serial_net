@@ -128,7 +128,8 @@ TapProtocol::doRead(int fd)
     if (m_txIf)
     {
         MsgHostIf::HostPkt hostPkt(rx.data(), readLen);
-        m_txIf->msgHostTx_sendPacket(hostPkt, destAddr);
+        m_txIf->msgHostTx_sendPacket(hostPkt, destAddr,
+                                     ChannelType::tap_format);
     }
 }
 

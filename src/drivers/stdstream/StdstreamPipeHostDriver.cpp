@@ -70,7 +70,8 @@ StdstreamPipeHostDriver::setupCallback(EventLoop& mainLoop)
             if (m_txHandler && m_destAddr != LocalAddress::null_addr)
             {
                 m_txHandler->msgHostTx_sendPacket(
-                    MsgHostIf::HostPkt(buffer, dataRead), m_destAddr);
+                    MsgHostIf::HostPkt(buffer, dataRead), m_destAddr,
+                    ChannelType::raw_stream);
             }
         }
         // return true, so that we also return future read events
@@ -81,7 +82,8 @@ StdstreamPipeHostDriver::setupCallback(EventLoop& mainLoop)
 void
 StdstreamPipeHostDriver::packetReceived(const ByteVec& data,
                                         LocalAddress srcAddr,
-                                        LocalAddress destAddr)
+                                        LocalAddress destAddr,
+                                        ChannelType chType)
 {
     m_posixIf->write(STDOUT_FILENO, &data[0], data.size());
 }

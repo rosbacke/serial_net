@@ -30,7 +30,10 @@
 /**
  * Implement a queue that is expected to drain to empty from time to time.
  * This allows using an std::vector for storage. It does require the application
- * to ensure that the queue drains to avoid runaway conditions.
+ * to ensure that the queue drains from time to time to avoid runaway
+ * conditions.
+ * Partial protection is built in to force elements to the beginning after a
+ * while.
  */
 template <class El>
 class VecQueue
@@ -39,8 +42,13 @@ class VecQueue
     VecQueue() : m_headPos(0){};
     ~VecQueue(){};
 
+    template <int normLimit = 20>
     void push(const El& el)
     {
+        if (m_store.size() > normLimit)
+        {
+            checkRenormalization();
+        }
         m_store.push_back(el);
     }
 
@@ -84,6 +92,16 @@ class VecQueue
         {
             m_headPos = 0;
             m_store.clear();
+        }
+    }
+    void checkRenormalization()
+    {
+        if (m_headPos > m_store.size() / 2)
+        {
+            // Force renormalization if the size is starting to grow.
+            auto b = m_store.begin();
+            m_store.erase(b, b + m_headPos);
+            m_headPos = 0;
         }
     }
 

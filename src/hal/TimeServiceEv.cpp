@@ -26,6 +26,11 @@
 #include "eventwrapper/EventLoop.h"
 #include "utility/Log.h"
 
+#include "utility/Log.h"
+#include <functional>
+#include <memory>
+#include <utility>
+
 using Timer = TimeServiceIf::Timer;
 using TimePoint = TimeServiceIf::TimePoint;
 
@@ -35,58 +40,35 @@ namespace
 class TimeWatcher : public TimeServiceIf::TimerImpl
 {
   public:
-    TimeWatcher(EventLoop& loop) : m_loop(loop)
+    TimeWatcher(EventLoop& evLoop) : m_data(evLoop)
     {
-        m_timeoutHelper = std::make_shared<void*>(nullptr);
     }
 
     ~TimeWatcher() override
     {
-        if (m_tokenTimeout)
-        {
-            m_tokenTimeout->cancel();
-        }
     }
 
-    void makeTimeout(double timespan, std::function<void()> fkn)
+    void makeTimeout(double timespan, std::function<void()> fkn,
+                     std::shared_ptr<TimeServiceIf::TimerImpl>& tw)
     {
-        auto weakPtr = std::weak_ptr<void*>(m_timeoutHelper);
-        m_tokenTimeout =
-            m_loop.onTimeout(timespan, [this, weakPtr, fkn]() -> bool {
-                auto ptr = weakPtr.lock();
-                if (ptr)
-                {
-                    m_tokenTimeout.reset();
-                    fkn();
-                }
-                else
-                {
-                    LOG_WARN << "Failed timeout cb.";
-                }
-                return false;
-            });
-        LOG_TRACE << "Timeout setup.";
+        // Note: fkn() might replace the owner of this class. Get a
+        // copy of the ptr to ensure it's still alive when we get back.
+        m_tw = tw;
+        m_data.start(timespan, [fkn, this]() {
+            fkn();
+            m_tw.reset();
+        });
     }
 
     void cancel() override
     {
-        LOG_TRACE << "Timeout cleanup.";
-
-        if (m_tokenTimeout)
-        {
-            m_tokenTimeout->cancel();
-            m_tokenTimeout.reset();
-        }
+        m_data.cancel();
     }
 
-    std::shared_ptr<TimeoutWatcher> m_tokenTimeout;
+    TimeoutData m_data;
 
-    // Helper for delayed callback. Will derive a weak ptr to this
-    // that is handed out to e.g. external timers etc.
-    // If *this is deleted when callback happens, weak_ptr return nullptr.
-    std::shared_ptr<void*> m_timeoutHelper;
-
-    EventLoop& m_loop;
+    // Need this to keep TimeoutData object alive in case of early cancellation.
+    std::shared_ptr<TimeServiceIf::TimerImpl> m_tw;
 };
 }
 
@@ -94,16 +76,16 @@ TimeServiceIf::Timer
 TimeServiceEv::makeTimeout(double timespan, std::function<void()> fkn)
 {
     auto tw = std::make_shared<TimeWatcher>(m_loop);
-    tw->makeTimeout(timespan, fkn);
-    TimeServiceIf::Timer timer(tw);
-    return timer;
+    std::shared_ptr<TimeServiceIf::TimerImpl> ti = tw;
+    tw->makeTimeout(timespan, fkn, ti);
+    return TimeServiceIf::Timer(std::move(ti));
 }
 
 TimeServiceIf::Timer
 TimeServiceEv::makeTimeoutAbs(TimePoint timepoint, std::function<void()> fkn)
 {
     auto tw = std::make_shared<TimeWatcher>(m_loop);
-    tw->makeTimeout(timepoint - now(), fkn);
-    TimeServiceIf::Timer timer(tw);
-    return timer;
+    std::shared_ptr<TimeServiceIf::TimerImpl> ti = tw;
+    tw->makeTimeout(timepoint - now(), fkn, ti);
+    return TimeServiceIf::Timer(std::move(ti));
 }

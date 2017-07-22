@@ -42,7 +42,6 @@ class ActionHandler;
 class AddressLine;
 class TimeServiceIf;
 
-
 /**
  * Responsible for implementing the logic regarding Dynamic address
  * allocation.
@@ -93,9 +92,8 @@ class DynamicHandler
     MasterPacketTx* m_tx = nullptr;
     ActionHandler* m_ah = nullptr;
 
-
     TimeServiceIf::Timer m_timer;
-    //Timer m_pollTimer;
+    // Timer m_pollTimer;
     Config* m_config = nullptr;
 };
 

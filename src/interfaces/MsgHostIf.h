@@ -50,7 +50,8 @@ class MsgHostIf
 
     // The core implements this function.
     virtual void msgHostTx_sendPacket(const HostPkt& data,
-                                      LocalAddress destAddr) = 0;
+                                      LocalAddress destAddr,
+                                      ChannelType chType) = 0;
 
     virtual void msgHostTx_sendMacUpdate(std::array<gsl::byte, 6> mac) = 0;
 
@@ -64,13 +65,16 @@ class MsgHostIf
          * Called when a packet was received from the serial net.
          */
         virtual void packetReceived(const ByteVec& data, LocalAddress srcAddr,
-                                    LocalAddress destAddr) = 0;
+                                    LocalAddress destAddr,
+                                    ChannelType chType) = 0;
     };
 
     /**
      * Inform the driver where it is supposed to send its packets.
+     * @param rxIf  Interface where received packets are posted.
+     * @param ChannelType type of packets to forward.
      */
-    virtual void setRxHandler(RxIf* rxIf) = 0;
+    virtual void setRxHandler(RxIf* rxIf, ChannelType chType) = 0;
 
     /**
       * Interface for receiving notifications when the local address changes.

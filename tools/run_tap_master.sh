@@ -16,8 +16,9 @@ sudo ip tuntap add tap0 mode tap user $MY_USER
 # Set up IP address. (TODO: support for DHCP instead)
 sudo ifconfig tap0 192.168.128.1
 sudo ip link set dev tap0 mtu 500
+SERIAL=/dev/ttyUSB0
 
-${HOME}/0_project/serial_net/out/src/mains/serialnet/serialnet --mode tap -m -l 0 --wsdump ${HOME}/packet.txt -d /dev/ttyS1 --serial-options pulldown
+${HOME}/0_project/serial_net/out/src/mains/serialnet/serialnet --mode tap -m -l 0 --wsdump ${HOME}/packet.txt -d ${SERIAL} --serial-options pulldown
 
 # --mtimeout 120
 

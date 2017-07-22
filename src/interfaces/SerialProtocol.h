@@ -67,24 +67,24 @@ operator<<(std::ostream& os, MessageType msgType)
 static inline std::string
 toString(MessageType mt)
 {
-#define CASE(x) case MessageType::x: return #x
-	switch(mt)
-	{
-	CASE(grant_token);
-	CASE(return_token);
-	CASE(master_started);
-	CASE(master_ended);
-	CASE(send_packet);
-	CASE(mac_update);
-	CASE(address_discovery);
-	CASE(address_request);
-	CASE(address_reply);
-	}
-	return "";
+#define CASE(x)          \
+    case MessageType::x: \
+        return #x
+    switch (mt)
+    {
+        CASE(grant_token);
+        CASE(return_token);
+        CASE(master_started);
+        CASE(master_ended);
+        CASE(send_packet);
+        CASE(mac_update);
+        CASE(address_discovery);
+        CASE(address_request);
+        CASE(address_reply);
+    }
+    return "";
 #undef CASE
 }
-
-
 
 /**
  * Address allocations:
@@ -123,6 +123,31 @@ inline LocalAddress
 toLocalAddress(int byte)
 {
     return static_cast<LocalAddress>(byte);
+}
+
+enum class ChannelType : uint8_t
+{
+    illegal_type,
+    raw_stream,
+    tun_format,
+    tap_format
+};
+
+static inline std::string
+toString(ChannelType mt)
+{
+#define CASE(x)          \
+    case ChannelType::x: \
+        return #x
+    switch (mt)
+    {
+        CASE(illegal_type);
+        CASE(raw_stream);
+        CASE(tun_format);
+        CASE(tap_format);
+    }
+    return "";
+#undef CASE
 }
 
 /**
@@ -197,6 +222,7 @@ struct MasterEnded
 struct SendPacket
 {
     MessageType m_type;
+    ChannelType m_chType;
     LocalAddress m_destAddr;
     LocalAddress m_srcAddr;
 };
@@ -221,6 +247,7 @@ struct AddressRequest
 {
     MessageType m_type;
     UniqueId m_uniqueId;
+    ChannelType m_channelType;
     Crc32 m_crc32;
 };
 

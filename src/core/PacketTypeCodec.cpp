@@ -29,6 +29,8 @@
 #include "WSDump.h"
 #include "utility/Log.h"
 
+#include <algorithm>
+#include <array>
 #include <cassert>
 
 using namespace gsl;
@@ -81,7 +83,7 @@ PacketTypeCodec::rxRawPacket(const MsgEtherIf::EtherPkt& bb)
 {
     if (!longEnough(bb))
     {
-    	LOG_WARN << "Received to short packet, size:" <<  bb.size();
+        LOG_WARN << "Received to short packet, size:" << bb.size();
         return;
     }
     if (m_wsDump)
@@ -106,8 +108,8 @@ PacketTypeCodec::rxRawPacket(const MsgEtherIf::EtherPkt& bb)
     }
     case MessageType::send_packet:
     {
-        auto p = packet::toHeader<packet::GrantToken>(bb);
-        const LocalAddress destAddr = p->m_tokenReceiver;
+        auto p = packet::toHeader<packet::SendPacket>(bb);
+        const LocalAddress destAddr = p->m_destAddr;
         if ((destAddr == ownAddress && ownAddress != LocalAddress::null_addr) ||
             ownAddress == LocalAddress::broadcast ||
             destAddr == LocalAddress::broadcast)
@@ -171,19 +173,19 @@ PacketTypeCodec::deliverRxQueue()
 {
     while (!m_rxMsg.empty())
     {
-        const int headerSize = 3;
-        // ByteBuf bb(m_rxMsg.front());
         const auto& f = m_rxMsg.front();
         MsgEtherIf::EtherPkt bb(f.data(), f.size());
-        LOG_DEBUG << "Deliver packet with size: " << bb.size();
-        assert(bb.size() >= 3);
-        auto destAddr = toLocalAddress(bb[1]);
-        auto srcAddr = toLocalAddress(bb[2]);
-        auto res = ByteVec(bb.begin() + headerSize, bb.end());
-        auto rxIf = m_txQueue->getRxIf();
+        assert(bb.size() >= (int)sizeof(packet::SendPacket));
+        auto p = packet::toHeader<packet::SendPacket>(bb);
+        LOG_DEBUG << "Rx packet with size: " << bb.size()
+                  << " from: " << p->m_srcAddr
+                  << " type: " << toString(p->m_chType);
+
+        auto res = ByteVec(bb.begin() + sizeof(packet::SendPacket), bb.end());
+        auto rxIf = m_txQueue->getRxIf(p->m_chType);
         if (rxIf)
         {
-            rxIf->packetReceived(res, srcAddr, destAddr);
+            rxIf->packetReceived(res, p->m_srcAddr, p->m_destAddr, p->m_chType);
         }
         m_rxMsg.pop_front();
     }

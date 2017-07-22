@@ -55,11 +55,13 @@ class TxQueue : public MsgHostIf, public MasterTxIf
         m_ownAddress.set(addr);
     }
 
-    void sendPacket(const MsgHostIf::HostPkt& data, LocalAddress address);
+    void sendPacket(const MsgHostIf::HostPkt& data, LocalAddress address,
+                    ChannelType chType);
 
     // Implement MsgHostIf::TxIf interface.
     virtual void msgHostTx_sendPacket(const MsgHostIf::HostPkt& data,
-                                      LocalAddress destAddr) override;
+                                      LocalAddress destAddr,
+                                      ChannelType chType) override;
 
     virtual void msgHostTx_sendMacUpdate(std::array<gsl::byte, 6> mac) override;
 
@@ -89,15 +91,9 @@ class TxQueue : public MsgHostIf, public MasterTxIf
     // Send either a client packet or a return token.
     void sendClientPacketOrReturnToken();
 
-    virtual void setRxHandler(RxIf* rxIf)
-    {
-        m_rxIf = rxIf;
-    }
+    virtual void setRxHandler(RxIf* rxIf, ChannelType chType);
 
-    MsgHostIf::RxIf* getRxIf() const
-    {
-        return m_rxIf;
-    }
+    MsgHostIf::RxIf* getRxIf(ChannelType chType) const;
 
     virtual void setAddrUpdateHandler(MsgHostIf::AddrChange* ac)
     {
@@ -118,7 +114,9 @@ class TxQueue : public MsgHostIf, public MasterTxIf
 
     bool m_gotDynamicAddress;
 
-    MsgHostIf::RxIf* m_rxIf = nullptr;
+    MsgHostIf::RxIf* m_rxIfRaw = nullptr;
+    MsgHostIf::RxIf* m_rxIfTap = nullptr;
+    MsgHostIf::RxIf* m_rxIfTun = nullptr;
 };
 
 #endif /* SRC_CORE_TXQUEUE_H_ */

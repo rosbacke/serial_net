@@ -62,7 +62,7 @@ TEST(TimeServiceEv, check_makeTimeout_that_really_times_out)
 
     auto timer = ev.makeTimeout(0.002, [&]() {
         cbDone = true;
-        t2 = loop.now();
+        t2 = ev.now();
         return false;
     });
 
@@ -115,7 +115,7 @@ TEST(TimeServiceEv, calling_cancel_will_not_call_callback)
 {
     EventLoop loop;
     TimeServiceEv ev(loop);
-    bool cbDone = false;
+    auto cbDone = false;
 
     double t1 = ev.now();
     double t2 = 0.0;
@@ -147,7 +147,7 @@ TEST(TimeServiceEv, dropping_timer_object_will_cancel_timeout)
 {
     EventLoop loop;
     TimeServiceEv ev(loop);
-    bool cbDone = false;
+    auto cbDone = false;
 
     double t1 = ev.now();
     double t2 = 0.0;

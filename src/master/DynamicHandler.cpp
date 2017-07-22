@@ -29,7 +29,8 @@
 
 #include "utility/Config.h"
 
-DynamicHandler::DynamicHandler(TimeServiceIf& ts, Config* cfg, MasterPacketTx* tx)
+DynamicHandler::DynamicHandler(TimeServiceIf& ts, Config* cfg,
+                               MasterPacketTx* tx)
     : m_minAddr(cfg->staticLowAddress()), m_maxAddr(cfg->staticHighAddress()),
       m_ts(ts), m_tx(tx), m_config(cfg)
 {
@@ -74,7 +75,7 @@ DynamicHandler::receivedAddressRequest(const packet::AddressRequest& aReq)
     {
         auto localAddr = allocAddress(aReq.m_uniqueId);
         m_table.emplace_back(localAddr, AddressLine::State::idle, true,
-                             aReq.m_uniqueId);
+                             aReq.m_uniqueId, aReq.m_channelType);
         m_ah->postActionNow(Action::makeSendTokenAction(localAddr));
         addrLine = findLine(localAddr);
     }

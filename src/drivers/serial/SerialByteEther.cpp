@@ -94,7 +94,7 @@ SerialByteEther::addClient(ByteEtherIf::RxIf* cb)
 bool
 SerialByteEther::readSerial()
 {
-	const int readBufSize = 2048;
+    const int readBufSize = 2048;
     gsl::byte rxBuf[readBufSize];
     ssize_t size = m_file->read(m_fd, &rxBuf, readBufSize);
     if (size > 0 && m_rxCB != nullptr)

@@ -52,19 +52,19 @@ EventLoop::onReadable(int fd, std::function<bool()> cb)
 std::shared_ptr<TimeoutWatcher>
 EventLoop::onTimeout(double delay, std::function<bool()> cb)
 {
-    return TimeoutWatcher::mkTimeoutWatch(delay, cb, m_loop);
+    return TimeoutWatcher::mkTimeoutWatch(m_loop, delay, cb);
 }
 
 std::shared_ptr<TimeoutWatcher>
 EventLoop::onAvailable(std::function<bool()> cb)
 {
-    return TimeoutWatcher::mkTimeoutWatch(0.0, cb, m_loop);
+    return TimeoutWatcher::mkTimeoutWatch(m_loop, 0.0, cb);
 }
 
 std::shared_ptr<SignalWatcher>
 EventLoop::onSignal(int signal, std::function<bool()> cb)
 {
-    return SignalWatcher::mkSignalWatch(signal, cb, m_loop);
+    return SignalWatcher::mkSignalWatch(m_loop, signal, cb);
 }
 
 void

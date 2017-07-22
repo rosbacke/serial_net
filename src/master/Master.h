@@ -44,8 +44,7 @@ class Config;
 class Master : MasterPacketIf::RxIf
 {
   public:
-    Master(TimeServiceIf& ts, MasterPacketIf* mr,
-           MasterTxIf* mt, Config* cfg);
+    Master(TimeServiceIf& ts, MasterPacketIf* mr, MasterTxIf* mt, Config* cfg);
 
     ~Master();
 

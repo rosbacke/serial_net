@@ -32,7 +32,8 @@ using gsl::byte;
 using packet::toHeader;
 
 void
-TxQueue::sendPacket(const MsgHostIf::HostPkt& data, LocalAddress address)
+TxQueue::sendPacket(const MsgHostIf::HostPkt& data, LocalAddress destAddress,
+                    ChannelType chType)
 {
     using PktType = packet::SendPacket;
     auto headerSize = sizeof(PktType);
@@ -40,7 +41,8 @@ TxQueue::sendPacket(const MsgHostIf::HostPkt& data, LocalAddress address)
     auto p = toHeader<PktType>(packet.data());
 
     p->m_type = MessageType::send_packet;
-    p->m_destAddr = address;
+    p->m_chType = chType;
+    p->m_destAddr = destAddress;
     p->m_srcAddr = m_ownAddress.addr();
     std::copy(data.begin(), data.end(), packet.begin() + headerSize);
 
@@ -78,13 +80,13 @@ TxQueue::sendMasterPacket(const MsgEtherIf::EtherPkt& packet)
 
 void
 TxQueue::msgHostTx_sendPacket(const MsgHostIf::HostPkt& data,
-                              LocalAddress destAddr)
+                              LocalAddress destAddr, ChannelType chType)
 {
     if (m_ownAddress.valid())
     {
         LOG_DEBUG << "Try to send packet from " << m_ownAddress.addr() << " to "
                   << destAddr;
-        sendPacket(data, destAddr);
+        sendPacket(data, destAddr, chType);
     }
 }
 
@@ -125,4 +127,40 @@ TxQueue::masterStarted()
         LOG_INFO << "Detected master start. Set own address to 0";
         m_ownAddress.set(LocalAddress::null_addr);
     }
+}
+
+void
+TxQueue::setRxHandler(RxIf* rxIf, ChannelType chType)
+{
+    switch (chType)
+    {
+    case ChannelType::raw_stream:
+        m_rxIfRaw = rxIf;
+        return;
+    case ChannelType::tap_format:
+        m_rxIfTap = rxIf;
+        return;
+    case ChannelType::tun_format:
+        m_rxIfTun = rxIf;
+        return;
+    case ChannelType::illegal_type:
+        return;
+    }
+}
+
+MsgHostIf::RxIf*
+TxQueue::getRxIf(ChannelType chType) const
+{
+    switch (chType)
+    {
+    case ChannelType::raw_stream:
+        return m_rxIfRaw;
+    case ChannelType::tap_format:
+        return m_rxIfTap;
+    case ChannelType::tun_format:
+        return m_rxIfTun;
+    case ChannelType::illegal_type:
+        return nullptr;
+    }
+    return nullptr;
 }

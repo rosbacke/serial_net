@@ -95,7 +95,8 @@ class TestDriver
 {
   public:
     TestDriver()
-        : m_ev(loop), mpTx(&masterMock), fsm(m_ev, nullptr, &mpTx, nullptr, nullptr)
+        : m_ev(loop), mpTx(&masterMock),
+          fsm(m_ev, nullptr, &mpTx, nullptr, nullptr)
     {
         fsm.setStartState(States::StateId::idle);
         EXPECT_TRUE(masterMock.empty());
@@ -121,8 +122,8 @@ class TestDriver
         loop.run();
         // Exit loop when there are no more actions to be taken.
 
-        EXPECT_EQ(return_value, expectedValue);
         EXPECT_TRUE(result_callback_called);
+        EXPECT_EQ(return_value, expectedValue);
 
         EXPECT_FALSE(fsm.actionActive());
         EXPECT_EQ(fsm.currentAction().m_action, Action::Cmd::do_nothing);
@@ -154,6 +155,7 @@ TEST(MasterFSM, test_master_start_action_with_ok)
 
 TEST(MasterFSM, test_master_start_action_with_timeout)
 {
+    Log::instance().m_level = Log::Level::trace;
     TestDriver td;
 
     auto action = Action::makeMasterStartAction();

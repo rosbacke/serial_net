@@ -24,11 +24,10 @@
 
 #include "TimeServiceSim.h"
 
-
 using Timer = TimeServiceIf::Timer;
 
-
-namespace {
+namespace
+{
 
 class TimeWatcher : public TimeServiceIf::TimerImpl
 {
@@ -91,31 +90,23 @@ class TimeWatcher : public TimeServiceIf::TimerImpl
 
 // }
 
-
-
-
-
-
 class TimerSim : public TimeServiceIf::TimerImpl
 {
-
 };
 }
 
 TimeServiceSim::TimeServiceSim()
 {
-	// TODO Auto-generated constructor stub
-
+    // TODO Auto-generated constructor stub
 }
 
 TimeServiceSim::~TimeServiceSim()
 {
-	// TODO Auto-generated destructor stub
+    // TODO Auto-generated destructor stub
 }
-
 
 Timer
 TimeServiceSim::makeTimeout(double timespan, std::function<void()> fkn)
 {
-	return Timer();
+    return std::move(Timer());
 }

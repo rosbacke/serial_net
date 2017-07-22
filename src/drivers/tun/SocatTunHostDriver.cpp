@@ -43,7 +43,7 @@ SocatTunHostDriver::startTransfer(MsgHostIf* txIf, EventLoop& loop)
 {
     m_txIf = txIf;
     setupCallback(loop);
-    txIf->setRxHandler(this);
+    txIf->setRxHandler(this, ChannelType::tun_format);
 }
 
 namespace
@@ -127,7 +127,8 @@ SocatTunHostDriver::doRead(int fd)
         {
             MsgHostIf::HostPkt hostPkt(m_rxTunPacket.data(),
                                        m_rxTunPacket.size());
-            m_txIf->msgHostTx_sendPacket(hostPkt, destAddr);
+            m_txIf->msgHostTx_sendPacket(hostPkt, destAddr,
+                                         ChannelType::tun_format);
         }
         break;
     }
@@ -152,7 +153,7 @@ SocatTunHostDriver::setupCallback(EventLoop& mainLoop)
  */
 void
 SocatTunHostDriver::packetReceived(const ByteVec& data, LocalAddress srcAddr,
-                                   LocalAddress destAddr)
+                                   LocalAddress destAddr, ChannelType chType)
 {
     int writeLen =
         m_posixFileIf->write(STDOUT_FILENO, data.data(), data.size());

@@ -58,7 +58,8 @@ class SocatTapHostDriver : public MsgHostIf::RxIf
      * Called when a packet was received from the serial net.
      */
     virtual void packetReceived(const ByteVec& data, LocalAddress srcAddr,
-                                LocalAddress destAddr) override;
+                                LocalAddress destAddr,
+                                ChannelType chType) override;
 
   private:
     void setupCallback(EventLoop& mainLoop);

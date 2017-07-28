@@ -38,10 +38,12 @@
 #include "drivers/serial/SerialByteEther.h"
 #include "master/Master.h"
 
-#include "drivers/stdstream/StdstreamPipeHostDriver.h"
+#include "drivers/pty/PtyRawHostDriver.h"
+#include "drivers/stdstream/StdioRawHostDriver.h"
 #include "drivers/tap/SocatTapHostDriver.h"
 #include "drivers/tap/TapHostDriver.h"
 #include "drivers/tun/SocatTunHostDriver.h"
+#include "drivers/tun/TunHostDriver.h"
 
 #include "factories/RealPosixFactory.h"
 
@@ -49,7 +51,7 @@
 #include <boost/program_options/option.hpp>
 #include <boost/program_options/options_description.hpp>
 
-SerialNet::SerialNet() : m_ts(m_loop)
+SerialNet::SerialNet() : m_ts(m_loop), m_fm(&m_snConfig)
 {
 }
 
@@ -108,35 +110,18 @@ SerialNet::start()
 
     m_msgEther->addClient(m_packetTypeCodec.get());
 
-    const bool usePipeHostDriver =        //
-        mode == SNConfig::Mode::std_out   //
-        || mode == SNConfig::Mode::std_in //
-        || mode == SNConfig::Mode::std_io;
-
-    if (usePipeHostDriver)
+    if (mode == SNConfig::Mode::std_io)
     {
-        m_stdHostStdstreamDriver = std::make_unique<StdstreamPipeHostDriver>(
-            m_snConfig.m_staticAddr, &m_posixFileIf);
-        switch (mode)
-        {
-        case SNConfig::Mode::std_out:
-            m_stdHostStdstreamDriver->startStdout(LocalAddress::broadcast);
-            break;
-
-        case SNConfig::Mode::std_in:
-            m_stdHostStdstreamDriver->startStdin(m_snConfig.m_destAddr,
-                                                 m_txQueue.get(), m_loop);
-            break;
-
-        case SNConfig::Mode::std_io:
-            m_stdHostStdstreamDriver->startStdout(LocalAddress::broadcast);
-            m_stdHostStdstreamDriver->startStdin(m_snConfig.m_destAddr,
-                                                 m_txQueue.get(), m_loop);
-            break;
-
-        default:
-            break;
-        }
+        m_stdioRawDriver = std::make_unique<StdioRawHostDriver>(&m_posixFileIf);
+        m_stdioRawDriver->startStdout(LocalAddress::broadcast);
+        m_stdioRawDriver->startStdin(m_snConfig.m_peerAddr, m_txQueue.get(),
+                                     m_loop);
+    }
+    if (mode == SNConfig::Mode::raw_pty)
+    {
+        m_ptyRawDriver = m_factory->makePtyRawHostDriver(&m_loop);
+        m_ptyRawDriver->setFM(&m_fm);
+        m_ptyRawDriver->setupCallback(m_txQueue.get(), m_snConfig.m_peerAddr);
     }
     else if (mode == SNConfig::Mode::socat_tun)
     {
@@ -151,6 +136,14 @@ SerialNet::start()
             m_addressCache.get(), &m_posixFileIf);
         m_packetTypeCodec->setAddressCache(m_addressCache.get());
         m_socatTapHostDriver->startTransfer(m_txQueue.get(), m_loop);
+    }
+    else if (mode == SNConfig::Mode::tun)
+    {
+        m_tunHostDriver = m_factory->makeTunHostDriver();
+        m_tunHostDriver->setIfEventCommands(m_snConfig.m_on_if_up,
+                                            m_snConfig.m_on_if_down);
+
+        m_tunHostDriver->startTransfer(m_txQueue.get(), m_loop);
     }
     else if (mode == SNConfig::Mode::tap)
     {

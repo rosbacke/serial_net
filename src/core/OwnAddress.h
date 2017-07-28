@@ -32,7 +32,8 @@ class OwnAddress
 {
   public:
     OwnAddress();
-    explicit OwnAddress(LocalAddress la) : m_addr(la){};
+    explicit OwnAddress(LocalAddress la)
+        : m_addr(la), m_dynamic(la == LocalAddress::null_addr){};
 
     ~OwnAddress();
 
@@ -53,8 +54,11 @@ class OwnAddress
         m_addrChangeIf = ac;
     }
 
+    void masterStarted();
+
   private:
     LocalAddress m_addr = LocalAddress::null_addr;
+    bool m_dynamic = false;
     MsgHostIf::AddrChange* m_addrChangeIf = nullptr;
 };
 

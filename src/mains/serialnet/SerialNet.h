@@ -26,6 +26,8 @@
 #define SRC_MAINS_SERIALNET_SERIALNET_H_
 
 #include "core/PacketTypeCodec.h"
+
+#include "core/FolderManager.h"
 #include "drivers/serial/SerialByteEther.h"
 #include "hal/PosixFileReal.h"
 #include "hal/PosixTunTapReal.h"
@@ -52,9 +54,11 @@ namespace po = boost::program_options;
 class Master;
 class ByteEtherIf;
 class MsgEtherIf;
-class StdstreamPipeHostDriver;
+class StdioRawHostDriver;
+class PtyRawHostDriver;
 class SocatTunHostDriver;
 class SocatTapHostDriver;
+class TunHostDriver;
 class TapHostDriver;
 class MsgToByteAdapter;
 class SerialHalReal;
@@ -103,15 +107,19 @@ class SerialNet
 
     EventLoop m_loop;
     TimeServiceEv m_ts;
+    FolderManager m_fm;
 
     std::unique_ptr<RealPosixFactory> m_factory;
 
     std::unique_ptr<PacketTypeCodec> m_packetTypeCodec;
     std::unique_ptr<TxQueue> m_txQueue;
 
-    std::unique_ptr<StdstreamPipeHostDriver> m_stdHostStdstreamDriver;
+    std::unique_ptr<StdioRawHostDriver> m_stdioRawDriver;
+    std::unique_ptr<PtyRawHostDriver> m_ptyRawDriver;
     std::unique_ptr<SocatTunHostDriver> m_socatTunHostDriver;
     std::unique_ptr<SocatTapHostDriver> m_socatTapHostDriver;
+
+    std::unique_ptr<TunHostDriver> m_tunHostDriver;
     std::unique_ptr<TapHostDriver> m_tapHostDriver;
     std::unique_ptr<AddressCache> m_addressCache;
 

@@ -36,11 +36,11 @@ SNConfig::toString(Mode mode)
     {
         CASE(unknown);
         CASE(none);
-        CASE(std_in);
-        CASE(std_out);
         CASE(std_io);
+        CASE(raw_pty);
         CASE(socat_tun);
         CASE(socat_tap);
+        CASE(tun);
         CASE(tap);
         CASE(setup_tap);
         CASE(remove_tap);
@@ -62,11 +62,11 @@ SNConfig::toMode(std::string mode)
 {
     IF_MODE(unknown)
     IF_MODE(none)
-    IF_MODE(std_in)
-    IF_MODE(std_out)
     IF_MODE(std_io)
+    IF_MODE(raw_pty)
     IF_MODE(socat_tun)  //
     IF_MODE(socat_tap)  //
+    IF_MODE(tun)        //
     IF_MODE(tap)        //
     IF_MODE(setup_tap)  //
     IF_MODE(remove_tap) //
@@ -152,26 +152,13 @@ SNConfig::setupSNConfig(boost::program_options::variables_map& vm)
     }
     m_staticAddr = static_cast<LocalAddress>(myAddr);
 
+    m_peerAddr = vm.count("peer_address") > 0
+                     ? toLocalAddress(vm["peer_address"].as<int>())
+                     : LocalAddress::broadcast;
+
     LOG_INFO << "mode: " << SNConfig::toString(m_mode);
     LOG_INFO << "addr: " << myAddr;
-
-    auto destAddr = LocalAddress::broadcast;
-
-    if (m_mode == SNConfig::Mode::std_in)
-    {
-        if (vm.count("dest_address") != 1)
-        {
-            LOG_ERROR << "Need a destination address for mode std_in.";
-            throw std::runtime_error("destination address.");
-        }
-        else
-        {
-            destAddr = vm["dest_address"].as<LocalAddress>();
-        }
-    }
-
-    LOG_INFO << "Got dest addr: " << destAddr;
-    m_destAddr = static_cast<LocalAddress>(destAddr);
+    LOG_INFO << "peer_addr: " << m_peerAddr;
 
     m_masterTimeout = vm["mtimeout"].as<int>();
 }

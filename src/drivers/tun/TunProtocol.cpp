@@ -16,34 +16,22 @@
  */
 
 /*
- * TunHostDriver.cpp
+ * TunProtocol.cpp
  *
- *  Created on: 21 sep. 2016
+ *  Created on: 23 juli 2017
  *      Author: mikaelr
  */
 
-#include "SocatTunHostDriver.h"
+#include "TunProtocol.h"
+
 #include "hal/PosixIf.h"
+#include "interfaces/MsgHostIf.h"
 #include "utility/Log.h"
-#include <unistd.h>
 
-using gsl::to_byte;
+using namespace gsl;
 
-SocatTunHostDriver::SocatTunHostDriver(PosixFileIf* pfi)
-    : m_txIf(nullptr), m_posixFileIf(pfi)
+TunProtocol::~TunProtocol()
 {
-}
-
-SocatTunHostDriver::~SocatTunHostDriver()
-{
-}
-
-void
-SocatTunHostDriver::startTransfer(MsgHostIf* txIf, EventLoop& loop)
-{
-    m_txIf = txIf;
-    setupCallback(loop);
-    txIf->setRxHandler(this, ChannelType::tun_format);
 }
 
 namespace
@@ -76,7 +64,7 @@ struct TunIpv4Header
 }
 
 void
-SocatTunHostDriver::doRead(int fd)
+TunProtocol::doRead(int fd)
 {
     int readlen;
     LocalAddress destAddr = LocalAddress::null_addr;
@@ -85,6 +73,7 @@ SocatTunHostDriver::doRead(int fd)
     case ReadType::header:
     {
         readlen = m_posixFileIf->read(fd, m_readHeader.data(), headerLen);
+        LOG_DEBUG << "TUN header read len:" << readlen;
         if (readlen != headerLen)
         {
             LOG_INFO << "Unexpected read len in header, len:" << readlen;
@@ -115,6 +104,7 @@ SocatTunHostDriver::doRead(int fd)
 
         void* start = m_rxTunPacket.data() + sizeof(TunIpv4Header);
         readlen = m_posixFileIf->read(fd, start, readMaxLen);
+        LOG_DEBUG << "TUN data read len:" << readlen;
         m_readType = ReadType::header;
         if (readlen != readMaxLen)
         {
@@ -136,29 +126,44 @@ SocatTunHostDriver::doRead(int fd)
 }
 
 void
-SocatTunHostDriver::setupCallback(EventLoop& mainLoop)
+TunProtocol::doRead2(int fd)
 {
-    // we'd like to be notified when input is available on stdin
-    mainLoop.onReadable(STDIN_FILENO, [this]() -> bool {
-        LOG_DEBUG << "Read from stdin.";
-        this->doRead(STDIN_FILENO);
+    LocalAddress destAddr = LocalAddress::null_addr;
 
-        // return true, so that we also return future read events
-        return true;
-    });
+    const int buffLen = 2048;
+    std::array<byte, buffLen> readBuf;
+    int readlen = m_posixFileIf->read(fd, readBuf.data(), buffLen);
+
+    LOG_DEBUG << "TUN header read len:" << readlen;
+    if (readlen < headerLen)
+    {
+        LOG_INFO << "Unexpected read len in header, len:" << readlen;
+        throw std::runtime_error("Unexpected read length");
+    }
+
+    TunIpv4Header* tunHeader = reinterpret_cast<TunIpv4Header*>(readBuf.data());
+    Ipv4Header* ipv4Header = &tunHeader->m_ipv4;
+    int length = ipv4Header->getLength();
+    LOG_DEBUG << "Tun IP length: " << length;
+    destAddr = toLocalAddress(to_byte(ipv4Header->m_destAddr[3]));
+
+    if (m_txIf)
+    {
+        MsgHostIf::HostPkt hostPkt(readBuf.data(),
+                                   length + sizeof(TunIpv4Header::m_tun));
+        m_txIf->msgHostTx_sendPacket(hostPkt, destAddr,
+                                     ChannelType::tun_format);
+    }
 }
 
 /**
  * Called when a packet was received from the serial net.
  */
 void
-SocatTunHostDriver::packetReceivedFromNet(const ByteVec& data,
-                                          LocalAddress srcAddr,
-                                          LocalAddress destAddr,
-                                          ChannelType chType)
+TunProtocol::packetReceivedFromNet(int fd, const ByteVec& data,
+                                   LocalAddress srcAddr, LocalAddress destAddr)
 {
-    int writeLen =
-        m_posixFileIf->write(STDOUT_FILENO, data.data(), data.size());
+    int writeLen = m_posixFileIf->write(fd, data.data(), data.size());
     if (writeLen != (int)data.size())
     {
         LOG_INFO << "Unexpected write len in data, data:" << writeLen;

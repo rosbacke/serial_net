@@ -88,15 +88,27 @@ struct StateArgs
  * Base class for all state classes. Templated on the HSMto allow easy
  * access to additional functions on the user FSM object.
  *
- * Supplies a number of helper function to be available in state context.
+ * Supplies a number of helper function to be available in state context
+ * to ease user interaction.
+ *
+ * Note that 'event' function is not handled here as a virtual function.
+ * Rather it is done internally via the Model class and direct call
+ * on the member.
  */
 template <class FSM>
 class StateBase
 {
+    // No moving these around due to placement new.
+    StateBase() = delete;
+    StateBase(const StateBase& s) = delete;
+    StateBase(StateBase&& s) = delete;
+    StateBase& operator=(const StateBase& s) = delete;
+    StateBase& operator=(StateBase&& s) = delete;
+
   protected:
     using StateId = typename FSM::StateId;
 
-    StateBase(StateArgs args)
+    explicit StateBase(StateArgs args)
         : m_fsm(static_cast<FSM*>(args.m_fsmBase)),
           m_stateId(static_cast<StateId>(args.m_stateId))
     {
@@ -110,7 +122,7 @@ class StateBase
      */
     void transition(StateId id)
     {
-        m_fsm->transition(static_cast<int>(id));
+        m_fsm->transition(id);
     }
 
     /// Reference to the custom state machine object.
@@ -263,17 +275,6 @@ class FsmBaseBase
     }
 
     FsmBaseSupport m_base;
-
-  public:
-    /**
-     * Call to indicate a transition to a new state after this
-     * event handling call has ended. Will call suitable exit/entry
-     * handlers.
-     */
-    void transition(int id)
-    {
-        m_base.transition(id);
-    }
 };
 
 template <class Event>
@@ -370,6 +371,11 @@ class FsmBase : public FsmBaseSt<St>
     using StateId = typename St::StateId;
     using Event = typename St::Event;
     using FsmDescription = St;
+
+    void transition(StateId id)
+    {
+        FsmBaseBase::m_base.transition(static_cast<int>(id));
+    }
 
     /**
      * Set start state and perform initial jump to that state.

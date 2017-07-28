@@ -81,16 +81,19 @@ PacketTypeCodec::~PacketTypeCodec()
 void
 PacketTypeCodec::rxRawPacket(const MsgEtherIf::EtherPkt& bb)
 {
-    if (!longEnough(bb))
-    {
-        LOG_WARN << "Received to short packet, size:" << bb.size();
+    if (bb.length() < 1)
         return;
-    }
+    const auto cmd = byte2MessageType(bb[0]);
     if (m_wsDump)
     {
         m_wsDump->rxPacket(bb);
     }
-    const auto cmd = byte2MessageType(bb[0]);
+    if (!longEnough(bb))
+    {
+        LOG_WARN << "Received to short packet, size:" << bb.size() << " cmd "
+                 << toString(cmd);
+        return;
+    }
     LOG_TRACE << "Command: " << toString(cmd) << " raw len: " << bb.size();
     LocalAddress ownAddress = m_txQueue->clientAddress();
     switch (cmd)
@@ -109,12 +112,14 @@ PacketTypeCodec::rxRawPacket(const MsgEtherIf::EtherPkt& bb)
     case MessageType::send_packet:
     {
         auto p = packet::toHeader<packet::SendPacket>(bb);
+        const LocalAddress srcAddr = p->m_srcAddr;
         const LocalAddress destAddr = p->m_destAddr;
         if ((destAddr == ownAddress && ownAddress != LocalAddress::null_addr) ||
             ownAddress == LocalAddress::broadcast ||
             destAddr == LocalAddress::broadcast)
         {
-            LOG_DEBUG << "Got a packet from: " << destAddr;
+            LOG_DEBUG << "Got a packet. from: " << srcAddr << " to "
+                      << destAddr;
             m_rxMsg.push_back(ByteVec(std::begin(bb), std::end(bb)));
         }
         break;
@@ -185,7 +190,8 @@ PacketTypeCodec::deliverRxQueue()
         auto rxIf = m_txQueue->getRxIf(p->m_chType);
         if (rxIf)
         {
-            rxIf->packetReceived(res, p->m_srcAddr, p->m_destAddr, p->m_chType);
+            rxIf->packetReceivedFromNet(res, p->m_srcAddr, p->m_destAddr,
+                                        p->m_chType);
         }
         m_rxMsg.pop_front();
     }

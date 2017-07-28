@@ -48,15 +48,14 @@ setupOptions(po::options_description& desc)
          "Colon sep. list of options for serial device. Ex: "
          "<none>|<pulldown>|<rs485_te>") //
         ("mode", po::value<std::string>(),
-         "Mode the program should work in. Allowed: std_in, std_out, std_io, "
-         "socat_tun, socat_tap, tap, setup_tap, remove_tap.") //
+         "Mode the program should work in. Allowed: std_io, raw_pty,"
+         "socat_tun, socat_tap, tun, tap, setup_tap, remove_tap.") //
         ("address", po::value<int>()->default_value(0),
          "Local address on the serial net. Implies static address. "
          "If not given, implies dynamic address for client only or static "
          "address 1 for master client. Value between 1 - 32") //
-        ("dest_address", po::value<int>()->default_value(0),
-         "For mode ipipe. Address where to send incoming data to. Value "
-         "between 1 - 32") //
+        ("peer_address", po::value<int>()->default_value(0),
+         "Address for the opposite end in the raw format.") //
         ("master,m",
          "Start the master part. Exactly one master should be active for each "
          "serial_net.") //
@@ -128,18 +127,6 @@ main(int argc, const char* argv[])
                   << std::endl;
         return 1;
     }
-#if 0
-    if (vm.count("serial-device") < 1)
-    {
-    	std::string mode = vm["mode"].as<std::string>();
-    	std::cerr << "Mode:" << mode << std::endl;
-    	if (mode != std::string("setup_tap"))
-    	{
-    	    std::cout << "Need serial device.\n\n" << desc << std::endl;
-    	    return 1;
-    	}
-    }
-#endif
 
     SerialNet sn;
     sn.setupSNConfig(vm);

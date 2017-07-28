@@ -35,6 +35,7 @@ void
 TxQueue::sendPacket(const MsgHostIf::HostPkt& data, LocalAddress destAddress,
                     ChannelType chType)
 {
+    LOG_DEBUG << "TxQueue, send packet:" << data.size();
     using PktType = packet::SendPacket;
     auto headerSize = sizeof(PktType);
     ByteVec packet(data.size() + headerSize);
@@ -122,11 +123,7 @@ void TxQueue::msgHostTx_sendMacUpdate(std::array<byte, 6> mac)
 void
 TxQueue::masterStarted()
 {
-    if (m_gotDynamicAddress)
-    {
-        LOG_INFO << "Detected master start. Set own address to 0";
-        m_ownAddress.set(LocalAddress::null_addr);
-    }
+    m_ownAddress.masterStarted();
 }
 
 void

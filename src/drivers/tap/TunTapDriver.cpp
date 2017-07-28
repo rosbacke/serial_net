@@ -59,6 +59,19 @@ TunTapDriver::~TunTapDriver()
     // TODO Auto-generated destructor stub
 }
 
+std::string
+TunTapDriver::toString(IfType t)
+{
+    switch (t)
+    {
+    case IfType::tap:
+        return "tap";
+    case IfType::tun:
+        return "tun";
+    }
+    return "unknown";
+}
+
 void
 TunTapDriver::setUserGroup(int fd, std::string user, std::string group)
 {
@@ -89,7 +102,7 @@ TunTapDriver::tuntap_alloc(std::string& dev, IfType type)
     struct ifreq ifr;
     int fd, err;
 
-    LOG_DEBUG << "tuntap_alloc";
+    LOG_DEBUG << "tuntap_alloc:" << toString(type);
 
     if ((fd = m_pfi->open("/dev/net/tun", O_RDWR)) < 0)
     {
@@ -153,16 +166,17 @@ TunTapDriver::setIfUpDown(bool up, std::string tapName)
         LOG_ERROR << "Error with ioctl_SIOCGIFFLAGS : " << ::strerror(errno);
         throw std::runtime_error("Failed getting tap interface flags.");
     }
-    auto oldVal = req.ifr_ifru.ifru_flags;
+    auto* fp = &req.ifr_ifru.ifru_flags;
+    auto oldVal = *fp;
     if (up)
     {
-        req.ifr_ifru.ifru_flags |= IFF_UP;
+        *fp |= IFF_UP;
     }
     else
     {
-        req.ifr_ifru.ifru_flags &= ~IFF_UP;
+        *fp &= ~IFF_UP;
     }
-    if (req.ifr_ifru.ifru_flags != oldVal)
+    if (*fp != oldVal)
     {
         err = m_ptti->ioctl_SIOCSIFFLAGS(fd, (void*)&req);
         if (err == -1)

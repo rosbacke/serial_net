@@ -38,6 +38,8 @@ class TunTapDriver
         tun,
         tap
     };
+    static std::string toString(IfType t);
+
     TunTapDriver(PosixFileIf* pfi, PosixTunTapIf* ptti);
     ~TunTapDriver();
 

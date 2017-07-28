@@ -22,33 +22,31 @@
  *      Author: mikaelr
  */
 
-#include "StdstreamPipeHostDriver.h"
+#include "StdioRawHostDriver.h"
 
 #include "hal/PosixIf.h"
 #include "utility/Log.h"
 #include <unistd.h>
 
-StdstreamPipeHostDriver::StdstreamPipeHostDriver(LocalAddress myAddr,
-                                                 PosixFileIf* posixIf)
-    : m_myAddr(myAddr), m_rxAddr(LocalAddress::null_addr),
-      m_destAddr(LocalAddress::null_addr), m_txHandler(nullptr),
-      m_posixIf(posixIf)
+StdioRawHostDriver::StdioRawHostDriver(PosixFileIf* posixIf)
+    : m_rxAddr(LocalAddress::null_addr), m_destAddr(LocalAddress::null_addr),
+      m_txHandler(nullptr), m_posixIf(posixIf)
 {
 }
 
-StdstreamPipeHostDriver::~StdstreamPipeHostDriver()
+StdioRawHostDriver::~StdioRawHostDriver()
 {
 }
 
 void
-StdstreamPipeHostDriver::startStdout(LocalAddress rxAddress)
+StdioRawHostDriver::startStdout(LocalAddress rxAddress)
 {
     m_rxAddr = rxAddress;
 }
 
 void
-StdstreamPipeHostDriver::startStdin(LocalAddress destAddr, MsgHostIf* txIf,
-                                    EventLoop& mainLoop)
+StdioRawHostDriver::startStdin(LocalAddress destAddr, MsgHostIf* txIf,
+                               EventLoop& mainLoop)
 {
     m_destAddr = destAddr;
     m_txHandler = txIf;
@@ -56,7 +54,17 @@ StdstreamPipeHostDriver::startStdin(LocalAddress destAddr, MsgHostIf* txIf,
 }
 
 void
-StdstreamPipeHostDriver::setupCallback(EventLoop& mainLoop)
+StdioRawHostDriver::writeToNet(MsgHostIf::HostPkt packet)
+{
+    if (m_txHandler && m_destAddr != LocalAddress::null_addr)
+    {
+        m_txHandler->msgHostTx_sendPacket(packet, m_destAddr,
+                                          ChannelType::raw_stream);
+    }
+}
+
+void
+StdioRawHostDriver::setupCallback(EventLoop& mainLoop)
 {
     // we'd like to be notified when input is available on stdin
     mainLoop.onReadable(STDIN_FILENO, [this]() -> bool {
@@ -67,12 +75,7 @@ StdstreamPipeHostDriver::setupCallback(EventLoop& mainLoop)
         dataRead = m_posixIf->read(STDIN_FILENO, buffer, maxRead);
         if (dataRead > 0)
         {
-            if (m_txHandler && m_destAddr != LocalAddress::null_addr)
-            {
-                m_txHandler->msgHostTx_sendPacket(
-                    MsgHostIf::HostPkt(buffer, dataRead), m_destAddr,
-                    ChannelType::raw_stream);
-            }
+            writeToNet(MsgHostIf::HostPkt(buffer, dataRead));
         }
         // return true, so that we also return future read events
         return true;
@@ -80,10 +83,10 @@ StdstreamPipeHostDriver::setupCallback(EventLoop& mainLoop)
 }
 
 void
-StdstreamPipeHostDriver::packetReceived(const ByteVec& data,
-                                        LocalAddress srcAddr,
-                                        LocalAddress destAddr,
-                                        ChannelType chType)
+StdioRawHostDriver::packetReceivedFromNet(const ByteVec& data,
+                                          LocalAddress srcAddr,
+                                          LocalAddress destAddr,
+                                          ChannelType chType)
 {
     m_posixIf->write(STDOUT_FILENO, &data[0], data.size());
 }

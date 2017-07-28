@@ -16,17 +16,17 @@
  */
 
 /*
- * TapHostDriver.h
+ * TunHostDriver.h
  *
- *  Created on: 23 okt. 2016
+ *  Created on: 23 juli 2017
  *      Author: mikaelr
  */
 
-#ifndef SRC_DRIVERS_TAP_TAPHOSTDRIVER_H_
-#define SRC_DRIVERS_TAP_TAPHOSTDRIVER_H_
+#ifndef SRC_DRIVERS_TUN_TUNHOSTDRIVER_H_
+#define SRC_DRIVERS_TUN_TUNHOSTDRIVER_H_
 
-#include "TapProtocol.h"
-#include "TunTapDriver.h"
+#include "TunProtocol.h"
+#include "drivers/tap/TunTapDriver.h"
 #include "eventwrapper/EventLoop.h"
 #include "hal/PosixFd.h"
 #include "interfaces/MsgHostIf.h"
@@ -34,12 +34,12 @@
 class PosixFileIf;
 class PosixTunTapIf;
 
-class TapHostDriver : public MsgHostIf::RxIf, public MsgHostIf::AddrChange
+class TunHostDriver : public MsgHostIf::RxIf, public MsgHostIf::AddrChange
 {
   public:
-    TapHostDriver(AddressCache* ac, PosixFileIf* pfi,
-                  std::unique_ptr<TunTapDriver>&& ttd);
-    virtual ~TapHostDriver();
+    TunHostDriver(PosixFileIf* pfi, std::unique_ptr<TunTapDriver>&& ttd);
+
+    virtual ~TunHostDriver();
 
     void setIfEventCommands(std::string onUp, std::string onDown)
     {
@@ -57,10 +57,18 @@ class TapHostDriver : public MsgHostIf::RxIf, public MsgHostIf::AddrChange
                                        LocalAddress destAddr,
                                        ChannelType chType) override
     {
-        m_tap.packetReceived(m_tap_fd, data, srcAddr, destAddr);
+        if (chType == ChannelType::tun_format)
+        {
+            m_tun.packetReceivedFromNet(m_tun_fd, data, srcAddr, destAddr);
+        }
+        else
+        {
+            throw std::runtime_error(
+                "trying to decode tun packet with wrong packet type.");
+        }
     }
 
-    static void setTapIfUpDown(PosixFileIf* posixFile, PosixTunTapIf* posixTun,
+    static void setTunIfUpDown(PosixFileIf* posixFile, PosixTunTapIf* posixTun,
                                bool up);
 
     void msgHostRx_newAddr(LocalAddress addr) final;
@@ -68,15 +76,15 @@ class TapHostDriver : public MsgHostIf::RxIf, public MsgHostIf::AddrChange
     void setupCallback(EventLoop& mainLoop);
 
   private:
-    TapProtocol m_tap;
-
-    PosixFd m_tap_fd;
+    PosixFd m_tun_fd;
     PosixFileIf* m_pfi;
+    TunProtocol m_tun;
+
     std::string m_on_if_up;
     std::string m_on_if_down;
     bool m_ifUp = false;
     std::unique_ptr<TunTapDriver> m_tunTapDriver;
-    std::string m_tapName = "tap0";
+    std::string m_tunName = "tun0";
 };
 
-#endif /* SRC_DRIVERS_TAP_TAPHOSTDRIVER_H_ */
+#endif /* SRC_DRIVERS_TUN_TUNHOSTDRIVER_H_ */

@@ -22,8 +22,8 @@
  *      Author: mikaelr
  */
 
-#ifndef SRC_DRIVERS_STDSTREAM_STDSTREAMPIPEHOSTDRIVER_H_
-#define SRC_DRIVERS_STDSTREAM_STDSTREAMPIPEHOSTDRIVER_H_
+#ifndef SRC_DRIVERS_STDSTREAM_STDIORAWHOSTDRIVER_H_
+#define SRC_DRIVERS_STDSTREAM_STDIORAWHOSTDRIVER_H_
 
 #include "eventwrapper/EventLoop.h"
 #include "interfaces/MsgHostIf.h"
@@ -33,11 +33,11 @@
 
 class PosixFileIf;
 
-class StdstreamPipeHostDriver : public MsgHostIf::RxIf
+class StdioRawHostDriver : public MsgHostIf::RxIf
 {
   public:
-    StdstreamPipeHostDriver(LocalAddress myAddr, PosixFileIf* posixIf);
-    virtual ~StdstreamPipeHostDriver();
+    StdioRawHostDriver(PosixFileIf* posixIf);
+    virtual ~StdioRawHostDriver();
 
     void startStdout(LocalAddress rxAddress);
 
@@ -47,14 +47,14 @@ class StdstreamPipeHostDriver : public MsgHostIf::RxIf
     /**
      * Called when a packet was received from the serial net.
      */
-    void packetReceived(const ByteVec& data, LocalAddress srcAddr,
-                        LocalAddress destAddr, ChannelType chType) override;
+    void packetReceivedFromNet(const ByteVec& data, LocalAddress srcAddr,
+                               LocalAddress destAddr,
+                               ChannelType chType) override;
 
   private:
-    void setupCallback(EventLoop& mainLoop);
+    void writeToNet(MsgHostIf::HostPkt packet);
 
-    // My address in the network.
-    LocalAddress m_myAddr;
+    void setupCallback(EventLoop& mainLoop);
 
     // Address of the unit we are receiving data from.
     LocalAddress m_rxAddr;
@@ -69,4 +69,4 @@ class StdstreamPipeHostDriver : public MsgHostIf::RxIf
     PosixFileIf* m_posixIf;
 };
 
-#endif /* SRC_DRIVERS_STDSTREAM_STDSTREAMPIPEHOSTDRIVER_H_ */
+#endif /* SRC_DRIVERS_STDSTREAM_STDIORAWHOSTDRIVER_H_ */

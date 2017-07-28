@@ -16,42 +16,34 @@
  */
 
 /*
- * OwnAddress.cpp
+ * FolderManager.h
  *
- *  Created on: 24 jan. 2017
+ *  Created on: 26 juli 2017
  *      Author: mikaelr
  */
 
-#include "OwnAddress.h"
-#include "utility/Log.h"
+#ifndef SRC_CORE_FOLDERMANAGER_H_
+#define SRC_CORE_FOLDERMANAGER_H_
 
-OwnAddress::OwnAddress()
-{
-    // TODO Auto-generated constructor stub
-}
+#include "mains/serialnet/SNConfig.h"
 
-OwnAddress::~OwnAddress()
-{
-    // TODO Auto-generated destructor stub
-}
+#include <string>
 
-void
-OwnAddress::set(LocalAddress addr)
+class FolderManager
 {
-    const bool change = (m_addr != addr);
-    m_addr = addr;
-    if (m_addrChangeIf && change)
-    {
-        m_addrChangeIf->msgHostRx_newAddr(m_addr);
-    }
-}
+  public:
+    FolderManager(SNConfig* snConfig);
+    ~FolderManager();
 
-void
-OwnAddress::masterStarted()
-{
-    if (m_dynamic)
-    {
-        LOG_INFO << "Detected master start. Set own address to 0";
-        set(LocalAddress::null_addr);
-    }
-}
+    std::string rootPath(std::string configPath);
+    void setupRootDir(std::string path);
+
+    void addPtyLink(LocalAddress addr, std::string ptyPath);
+    void removePtyLink(LocalAddress addr);
+
+  private:
+    std::string m_rootPath;
+    SNConfig* m_cfg = nullptr;
+};
+
+#endif /* SRC_CORE_FOLDERMANAGER_H_ */

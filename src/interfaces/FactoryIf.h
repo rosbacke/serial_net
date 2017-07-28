@@ -28,11 +28,14 @@
 #include <memory>
 
 class SerialByteEther;
+class TunHostDriver;
 class TapHostDriver;
+class PtyRawHostDriver;
 class AddressCache;
 class TunTapDriver;
 class SNConfig;
 class PosixFileIf;
+class EventLoop;
 
 class FactoryIf
 {
@@ -44,6 +47,11 @@ class FactoryIf
 
     virtual std::unique_ptr<TapHostDriver>
     makeTapHostDriver(AddressCache* ac) = 0;
+
+    virtual std::unique_ptr<PtyRawHostDriver>
+    makePtyRawHostDriver(EventLoop* loop) = 0;
+
+    virtual std::unique_ptr<TunHostDriver> makeTunHostDriver() = 0;
 
     virtual std::unique_ptr<TunTapDriver> makeTunTapDriver() = 0;
 

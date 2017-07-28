@@ -57,7 +57,12 @@ class PosixFd
         return m_fd;
     }
 
-    // Let this class emulate normal behavour of a file descriptor
+    bool valid() const
+    {
+        return m_fd >= 0;
+    }
+
+    // Let this class emulate normal behavior of a file descriptor
     // and act as a normal integer.
     operator int() const
     {
@@ -65,6 +70,18 @@ class PosixFd
     }
 
     ~PosixFd();
+
+    /// Grant access to the underlying posix file interface.
+    /// Saves the user from keeping track of its own interface pointer.
+    PosixFileIf* posixIf() const
+    {
+        return m_posixIf;
+    }
+
+    void close()
+    {
+        set(-1);
+    }
 
   private:
     PosixFd(const PosixFd& fd) = delete;

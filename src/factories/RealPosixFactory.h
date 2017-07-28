@@ -41,7 +41,12 @@ class RealPosixFactory : public FactoryIf
     std::unique_ptr<SerialByteEther>
     makeSerialByteEther(std::string path) override;
 
+    std::unique_ptr<PtyRawHostDriver>
+    makePtyRawHostDriver(EventLoop* loop) override;
+
     std::unique_ptr<TapHostDriver> makeTapHostDriver(AddressCache* ac) override;
+
+    std::unique_ptr<TunHostDriver> makeTunHostDriver() override;
 
     std::unique_ptr<TunTapDriver> makeTunTapDriver() override;
 

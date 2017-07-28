@@ -45,11 +45,11 @@ class SNConfig
     {
         unknown,
         none,
-        std_in,
-        std_out,
         std_io,
+        raw_pty,
         socat_tun,
         socat_tap,
+        tun,
         tap,
         setup_tap,
         remove_tap,
@@ -87,12 +87,15 @@ class SNConfig
     LocalAddress m_staticAddr = LocalAddress::null_addr;
 
     // Destination address for stdin mode.
-    LocalAddress m_destAddr = LocalAddress::null_addr;
+    LocalAddress m_peerAddr = LocalAddress::null_addr;
 
     int m_masterTimeout = 0;
 
     std::string m_user;
     std::string m_group;
+
+    // Path for status information. (understand '~/' as home folder)
+    std::string m_rootPath = "~/.serialnet";
 };
 
 #endif /* SRC_MAINS_SERIALNET_SNCONFIG_H_ */

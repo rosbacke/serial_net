@@ -40,8 +40,7 @@ class TxQueue : public MsgHostIf, public MasterTxIf
 {
   public:
     TxQueue(MsgEtherIf* msgEtherIf, LocalAddress ownAddr)
-        : m_msgEtherIf(msgEtherIf), m_ownAddress(ownAddr),
-          m_gotDynamicAddress(!m_ownAddress.valid())
+        : m_msgEtherIf(msgEtherIf), m_ownAddress(ownAddr)
     {
         LOG_INFO << "Set own address to :" << ownAddr << " at start.";
     }
@@ -111,8 +110,6 @@ class TxQueue : public MsgHostIf, public MasterTxIf
     std::deque<ByteVec> m_txMsg;
     MsgEtherIf* m_msgEtherIf = nullptr;
     OwnAddress m_ownAddress;
-
-    bool m_gotDynamicAddress;
 
     MsgHostIf::RxIf* m_rxIfRaw = nullptr;
     MsgHostIf::RxIf* m_rxIfTap = nullptr;

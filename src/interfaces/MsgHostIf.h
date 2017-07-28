@@ -64,9 +64,10 @@ class MsgHostIf
         /**
          * Called when a packet was received from the serial net.
          */
-        virtual void packetReceived(const ByteVec& data, LocalAddress srcAddr,
-                                    LocalAddress destAddr,
-                                    ChannelType chType) = 0;
+        virtual void packetReceivedFromNet(const ByteVec& data,
+                                           LocalAddress srcAddr,
+                                           LocalAddress destAddr,
+                                           ChannelType chType) = 0;
     };
 
     /**

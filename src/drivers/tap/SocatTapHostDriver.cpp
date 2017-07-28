@@ -42,10 +42,15 @@ SocatTapHostDriver::~SocatTapHostDriver()
 }
 
 void
-SocatTapHostDriver::packetReceived(const ByteVec& data, LocalAddress srcAddr,
-                                   LocalAddress destAddr, ChannelType chType)
+SocatTapHostDriver::packetReceivedFromNet(const ByteVec& data,
+                                          LocalAddress srcAddr,
+                                          LocalAddress destAddr,
+                                          ChannelType chType)
 {
-    m_tap.packetReceived(STDOUT_FILENO, data, srcAddr, destAddr);
+    if (chType == ChannelType::tap_format)
+    {
+        m_tap.packetReceived(STDOUT_FILENO, data, srcAddr, destAddr);
+    }
 }
 
 void

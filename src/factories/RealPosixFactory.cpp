@@ -23,8 +23,10 @@
  */
 
 #include "RealPosixFactory.h"
+#include "drivers/pty/PtyRawHostDriver.h"
 #include "drivers/serial/SerialByteEther.h"
 #include "drivers/tap/TapHostDriver.h"
+#include "drivers/tun/TunHostDriver.h"
 
 #include <memory>
 
@@ -43,6 +45,19 @@ RealPosixFactory::makeSerialByteEther(std::string path)
 {
     return std::make_unique<SerialByteEther>(path, &m_file, &m_sleep,
                                              &m_serial);
+}
+
+std::unique_ptr<PtyRawHostDriver>
+RealPosixFactory::makePtyRawHostDriver(EventLoop* loop)
+{
+    return std::make_unique<PtyRawHostDriver>(&m_file, loop);
+}
+
+std::unique_ptr<TunHostDriver>
+RealPosixFactory::makeTunHostDriver()
+{
+    auto ttd = makeTunTapDriver();
+    return std::make_unique<TunHostDriver>(&m_file, std::move(ttd));
 }
 
 std::unique_ptr<TapHostDriver>
